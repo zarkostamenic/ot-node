@@ -9,6 +9,8 @@ const Utilities = require('../../Utilities');
 const Models = require('../../../models/index');
 const ImportUtilities = require('../../ImportUtilities');
 
+const memwatch = require('memwatch-next');
+
 /**
  * Imports data for replication
  */
@@ -48,6 +50,9 @@ class DhReplicationImportCommand extends Command {
             transactionHash,
             encColor,
         } = command.data;
+
+        const hd = new memwatch.HeapDiff();
+
         const decryptedVertices =
             await ImportUtilities.immutableDecryptVertices(litigationVertices, litigationPublicKey);
         const calculatedDataSetId =
@@ -160,6 +165,10 @@ class DhReplicationImportCommand extends Command {
 
         await this.transport.replicationFinished(replicationFinishedMessage, dcNodeId);
         this.logger.info(`Replication request for ${offerId} sent to ${dcNodeId}`);
+
+        const diff = hd.end();
+        console.log('MEMORY-DIFF', JSON.stringify(diff));
+
         return {
             commands: [
                 {
