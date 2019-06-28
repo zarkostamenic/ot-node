@@ -45,6 +45,8 @@ const RestAPIService = require('./modules/service/rest-api-service');
 const M1PayoutAllMigration = require('./modules/migration/m1-payout-all-migration');
 const M2SequelizeMetaMigration = require('./modules/migration/m2-sequelize-meta-migration');
 
+const memwatch = require('memwatch-next');
+
 const pjson = require('./package.json');
 const configjson = require('./config/config.json');
 
@@ -53,6 +55,11 @@ const Web3 = require('web3');
 const log = require('./modules/logger');
 
 global.__basedir = __dirname;
+
+
+memwatch.on('leak', (info) => {
+    console.log('LEAK', JSON.stringify(info));
+});
 
 let context;
 const defaultConfig = configjson[

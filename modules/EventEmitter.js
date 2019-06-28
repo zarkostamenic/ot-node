@@ -6,6 +6,7 @@ const Utilities = require('./Utilities');
 const Models = require('../models');
 const ImportUtilities = require('./ImportUtilities');
 const ObjectValidator = require('./validator/object-validator');
+const memwatch = require('memwatch-next');
 
 class EventEmitter {
     /**
@@ -589,7 +590,11 @@ class EventEmitter {
         this._on('api-gs1-import-request', async (data) => {
             try {
                 logger.debug('GS1 import triggered');
+                const hd = new memwatch.HeapDiff();
                 const responseObject = await importer.importXMLgs1(data.content);
+                const diff = hd.end();
+
+                console.log('MEMORY-DIFF', JSON.stringify(diff));
                 const { error } = responseObject;
                 const { response } = responseObject;
 
