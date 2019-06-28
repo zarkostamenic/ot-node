@@ -52,6 +52,17 @@ const Web3 = require('web3');
 
 const log = require('./modules/logger');
 
+// const heapProfile = require('heap-profile');
+//
+// heapProfile.start();
+//
+// // Write a snapshot to disk every hour
+// setInterval(() => {
+//     heapProfile.write((err, filename) => {
+//         console.log(`heapProfile.write. err: ${err} filename: ${filename}`);
+//     });
+// }, 10 * 1000).unref();
+
 global.__basedir = __dirname;
 
 let context;

@@ -104,6 +104,7 @@
     "ethereumjs-wallet": "^0.6.2",
     "github-release-notes": "^0.16.0",
     "hdkey": "^0.8.0",
+    "heap-profile": "^0.3.2",
     "ip": "^1.1.5",
     "ipaddr.js": "^1.8.0",
     "js-levenshtein": "^1.1.3",

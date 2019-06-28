@@ -1,6 +1,9 @@
 const Command = require('../command');
 const Models = require('../../../models/index');
 
+const fs = require('fs');
+const uuidv4 = require('uuid/v4');
+
 /**
  * Handles new offer from the DH side
  */
@@ -69,11 +72,17 @@ class DHOfferHandleCommand extends Command {
      * @private
      */
     static _stripResponse(response) {
+        const vFilename = `${uuidv4()}.json`;
+        const eFilename = `${uuidv4()}.json`;
+
+        fs.writeFileSync(vFilename, JSON.stringify(response.litigation_vertices));
+        fs.writeFileSync(eFilename, JSON.stringify(response.edges));
+
         return {
             offerId: response.offer_id,
             dataSetId: response.data_set_id,
-            edges: response.edges,
-            litigationVertices: response.litigation_vertices,
+            edgesFilename: eFilename,
+            litigationVerticesFilename: vFilename,
             dcWallet: response.dc_wallet,
             litigationPublicKey: response.litigation_public_key,
             distributionPublicKey: response.distribution_public_key,

@@ -9,6 +9,8 @@ const Utilities = require('../../Utilities');
 const Models = require('../../../models/index');
 const ImportUtilities = require('../../ImportUtilities');
 
+const fs = require('fs');
+
 /**
  * Imports data for replication
  */
@@ -33,8 +35,8 @@ class DhReplicationImportCommand extends Command {
         const {
             offerId,
             dataSetId,
-            edges,
-            litigationVertices,
+            edgesFilename,
+            litigationVerticesFilename,
             litigationPublicKey,
             distributionPublicKey,
             distributionPrivateKey,
@@ -48,6 +50,10 @@ class DhReplicationImportCommand extends Command {
             transactionHash,
             encColor,
         } = command.data;
+
+        const edges = JSON.parse(fs.readFileSync(edgesFilename));
+        const litigationVertices = JSON.parse(fs.readFileSync(litigationVerticesFilename));
+
         const decryptedVertices =
             await ImportUtilities.immutableDecryptVertices(litigationVertices, litigationPublicKey);
         const calculatedDataSetId =
