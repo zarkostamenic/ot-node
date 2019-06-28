@@ -139,9 +139,6 @@ class DhReplicationImportCommand extends Command {
 
         importResult = importResult.response;
 
-        diff = hd.end();
-        console.log('MEMORY-DIFF2.5', JSON.stringify(diff));
-
         hd = new memwatch.HeapDiff();
 
         const dataSize = bytes(JSON.stringify(importResult.vertices));
