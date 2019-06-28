@@ -51,7 +51,7 @@ class DhReplicationImportCommand extends Command {
             encColor,
         } = command.data;
 
-        const hd = new memwatch.HeapDiff();
+        let hd = new memwatch.HeapDiff();
 
         const decryptedVertices =
             await ImportUtilities.immutableDecryptVertices(litigationVertices, litigationPublicKey);
@@ -106,12 +106,22 @@ class DhReplicationImportCommand extends Command {
         const calculatedDistPublicKey = Encryption.unpackEPK(distributionEpk);
         ImportUtilities.immutableDecryptVertices(distEncVertices, calculatedDistPublicKey);
 
+        let diff = hd.end();
+        console.log('MEMORY-DIFF1', JSON.stringify(diff));
+
+        hd = new memwatch.HeapDiff();
+
         await this.importer.importJSON({
             dataSetId,
             vertices: litigationVertices,
             edges,
             wallet: dcWallet,
         }, true, encColor);
+
+        diff = hd.end();
+        console.log('MEMORY-DIFF2', JSON.stringify(diff));
+
+        hd = new memwatch.HeapDiff();
 
         let importResult = await this.importer.importJSON({
             dataSetId,
@@ -120,11 +130,16 @@ class DhReplicationImportCommand extends Command {
             wallet: dcWallet,
         }, false);
 
+        diff = hd.end();
+        console.log('MEMORY-DIFF3', JSON.stringify(diff));
+
         if (importResult.error) {
             throw Error(importResult.error);
         }
 
         importResult = importResult.response;
+
+        hd = new memwatch.HeapDiff();
 
         const dataSize = bytes(JSON.stringify(importResult.vertices));
         await Models.data_info.create({
@@ -166,8 +181,8 @@ class DhReplicationImportCommand extends Command {
         await this.transport.replicationFinished(replicationFinishedMessage, dcNodeId);
         this.logger.info(`Replication request for ${offerId} sent to ${dcNodeId}`);
 
-        const diff = hd.end();
-        console.log('MEMORY-DIFF', JSON.stringify(diff));
+        diff = hd.end();
+        console.log('MEMORY-DIFF4', JSON.stringify(diff));
 
         return {
             commands: [
