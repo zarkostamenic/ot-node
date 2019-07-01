@@ -32,7 +32,13 @@ contract Holding is Ownable {
     uint256 dataRootHash, uint256 redLitigationHash, uint256 greenLitigationHash, uint256 blueLitigationHash, uint256 dcNodeId,
     uint256 holdingTimeInMinutes, uint256 tokenAmountPerHolder, uint256 dataSetSizeInBytes, uint256 litigationIntervalInMinutes) public {
         // Verify sender
-        require(ERC725(identity).keyHasPurpose(keccak256(abi.encodePacked(msg.sender)), 2));
+        if(!hub.isContract(msg.sender)) {
+            require(
+                ERC725(identity).keyHasPurpose(keccak256(abi.encodePacked(msg.sender)), 2),
+                "Sender does not have permission to create offer for the identity!"
+            );
+        }
+
         require(Approval(hub.approvalAddress()).identityHasApproval(identity), "Identity does not have approval for using the contract");
         // First we check that the paramaters are valid
         require(dataRootHash != 0, "Data root hash cannot be zero");
@@ -96,7 +102,13 @@ contract Holding is Ownable {
         HoldingStorage holdingStorage = HoldingStorage(hub.holdingStorageAddress());
 
         // Verify sender
-        require(ERC725(identity).keyHasPurpose(keccak256(abi.encodePacked(msg.sender)), 2));
+        if(!hub.isContract(msg.sender)) {
+            require(
+                ERC725(identity).keyHasPurpose(keccak256(abi.encodePacked(msg.sender)), 2),
+                "Sender does not have permission to create offer for the identity!"
+            );
+        }
+
         require(identity == holdingStorage.getOfferCreator(bytes32(offerId)), "Offer can only be finalized by its creator!");
 
         // Check if signatures match identities
