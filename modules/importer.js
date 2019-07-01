@@ -4,6 +4,8 @@ const ImportUtilities = require('./ImportUtilities');
 const Queue = require('better-queue');
 const graphConverter = require('./Database/graph-converter');
 
+const { forEachSeries } = require('p-iteration');
+
 class Importer {
     constructor(ctx) {
         this.gs1Importer = ctx.gs1Importer;
@@ -89,7 +91,7 @@ class Importer {
             jsonDocument,
         } = data;
 
-        let {
+        const {
             vertices,
             edges,
         } = jsonDocument;
@@ -107,16 +109,15 @@ class Importer {
             ImportUtilities.packKeys(vertices, edges, encColor);
         }
 
-        vertices = await Promise.all(vertices.map(async (vertex) => {
+
+        await forEachSeries(vertices, async (vertex) => {
             const inserted = await this.graphStorage.addVertex(vertex);
             vertex._key = inserted._key;
-            return vertex;
-        }));
-        edges = await Promise.all(edges.map(async (edge) => {
+        });
+        await forEachSeries(edges, async (edge) => {
             const inserted = await this.graphStorage.addEdge(edge);
             edge._key = inserted._key;
-            return edge;
-        }));
+        });
 
         const denormalizedVertices = graphConverter.denormalizeGraph(
             dataSetId,
@@ -125,20 +126,32 @@ class Importer {
         ).vertices;
 
         // TODO: Use transaction here.
-        await Promise.all(denormalizedVertices.map(vertex => this.graphStorage.addVertex(vertex))
-            .concat(edges.map(edge => this.graphStorage.addEdge(edge))));
+        await forEachSeries(denormalizedVertices, vertex => this.graphStorage.addVertex(vertex));
+        await forEachSeries(edges, edge => this.graphStorage.addEdge(edge));
 
         if (encColor == null) {
             // it's encrypted
-            await Promise.all(vertices
-                .filter(vertex => vertex.vertex_type !== 'CLASS')
-                .map(vertex => this.graphStorage.updateImports('ot_vertices', vertex, dataSetId))
-                .concat(edges.map(edge => this.graphStorage.updateImports('ot_edges', edge, dataSetId))));
+            await forEachSeries(
+                vertices
+                    .filter(vertex => vertex.vertex_type !== 'CLASS'),
+                vertex => this.graphStorage.updateImports('ot_vertices', vertex, dataSetId),
+            );
+            await forEachSeries(
+                vertices
+                    .filter(vertex => vertex.vertex_type !== 'CLASS'),
+                edge => this.graphStorage.updateImports('ot_edges', edge, dataSetId),
+
+            );
         } else {
             // not encrypted
-            await Promise.all(vertices
-                .map(vertex => this.graphStorage.updateImports('ot_vertices', vertex, dataSetId))
-                .concat(edges.map(edge => this.graphStorage.updateImports('ot_edges', edge, dataSetId))));
+            await forEachSeries(
+                vertices,
+                vertex => this.graphStorage.updateImports('ot_vertices', vertex, dataSetId),
+            );
+            await forEachSeries(
+                edges,
+                edge => this.graphStorage.updateImports('ot_edges', edge, dataSetId),
+            );
         }
         this.log.info('JSON import complete');
 
