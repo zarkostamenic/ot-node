@@ -137,8 +137,7 @@ class Importer {
                 vertex => this.graphStorage.updateImports('ot_vertices', vertex, dataSetId),
             );
             await forEachSeries(
-                vertices
-                    .filter(vertex => vertex.vertex_type !== 'CLASS'),
+                edges,
                 edge => this.graphStorage.updateImports('ot_edges', edge, dataSetId),
 
             );
