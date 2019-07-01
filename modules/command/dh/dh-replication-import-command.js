@@ -48,17 +48,9 @@ class DhReplicationImportCommand extends Command {
             transactionHash,
             encColor,
         } = command.data;
-        const decryptedVertices =
-            await ImportUtilities.immutableDecryptVertices(litigationVertices, litigationPublicKey);
-        const calculatedDataSetId =
-            await ImportUtilities.importHash(dataSetId, decryptedVertices, edges);
 
         if (bytes(JSON.stringify(litigationVertices)) > this.config.dh_max_data_set_size) {
             throw new Error(`Data set size is bigger than given limit of ${this.config.dh_max_data_set_size} bytes`);
-        }
-
-        if (dataSetId !== calculatedDataSetId) {
-            throw new Error(`Calculated data set ID ${calculatedDataSetId} differs from DC data set ID ${dataSetId}`);
         }
 
         ImportUtilities.sort(litigationVertices);
@@ -68,6 +60,29 @@ class DhReplicationImportCommand extends Command {
 
         if (litigationRootHash !== calculatedLitigationRootHash) {
             throw new Error(`Calculated litigation hash ${calculatedLitigationRootHash} differs from DC litigation hash ${litigationRootHash}`);
+        }
+
+        await this.importer.importJSON({
+            dataSetId,
+            vertices: litigationVertices,
+            edges,
+            wallet: dcWallet,
+        }, true, encColor);
+
+        const decryptedVertices =
+            await ImportUtilities.immutableDecryptVertices(litigationVertices, litigationPublicKey);
+        const calculatedDataSetId =
+            await ImportUtilities.importHash(dataSetId, decryptedVertices, edges);
+
+        let importResult = await this.importer.importJSON({
+            dataSetId,
+            vertices: decryptedVertices,
+            edges,
+            wallet: dcWallet,
+        }, false);
+
+        if (dataSetId !== calculatedDataSetId) {
+            throw new Error(`Calculated data set ID ${calculatedDataSetId} differs from DC data set ID ${dataSetId}`);
         }
 
         const distEncVertices = ImportUtilities.immutableEncryptVertices(
@@ -100,20 +115,6 @@ class DhReplicationImportCommand extends Command {
 
         const calculatedDistPublicKey = Encryption.unpackEPK(distributionEpk);
         ImportUtilities.immutableDecryptVertices(distEncVertices, calculatedDistPublicKey);
-
-        await this.importer.importJSON({
-            dataSetId,
-            vertices: litigationVertices,
-            edges,
-            wallet: dcWallet,
-        }, true, encColor);
-
-        let importResult = await this.importer.importJSON({
-            dataSetId,
-            vertices: decryptedVertices,
-            edges,
-            wallet: dcWallet,
-        }, false);
 
         if (importResult.error) {
             throw Error(importResult.error);

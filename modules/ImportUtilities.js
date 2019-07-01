@@ -226,14 +226,14 @@ class ImportUtilities {
      * @param privateKey Encryption key
      */
     static immutableEncryptVertices(vertices, privateKey) {
-        const copy = utilities.copyObject(vertices);
-        for (const id in copy) {
-            const vertex = copy[id];
-            if (vertex.data) {
-                vertex.data = Encryption.encryptObject(vertex.data, privateKey);
+        // const copy = utilities.copyObject(vertices);
+        for (const id in vertices) {
+            const vertex = vertices[id];
+            if (vertices.data) {
+                vertices.data = Encryption.encryptObject(vertex.data, privateKey);
             }
         }
-        return copy;
+        return vertices;
     }
 
     /**
@@ -243,13 +243,13 @@ class ImportUtilities {
      * @returns {*}
      */
     static immutableDecryptVertices(vertices, public_key) {
-        const copy = utilities.copyObject(vertices);
-        for (const id in copy) {
-            if (copy[id].data) {
-                copy[id].data = Encryption.decryptObject(copy[id].data, public_key);
+        // const copy = utilities.copyObject(vertices);
+        for (const id in vertices) {
+            if (vertices[id].data) {
+                vertices[id].data = Encryption.decryptObject(vertices[id].data, public_key);
             }
         }
-        return copy;
+        return vertices;
     }
 
     /**
