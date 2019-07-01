@@ -106,9 +106,6 @@ contract Profile {
     }
 
     function depositTokens(address identity, uint256 amount) public {
-        // Verify sender
-        require(ERC725(identity).keyHasPurpose(keccak256(abi.encodePacked(msg.sender)), 1),  "Sender does not have management permission for identity!");
-
         ProfileStorage profileStorage = ProfileStorage(hub.profileStorageAddress());
 
         ERC20 tokenContract = ERC20(hub.tokenAddress());
