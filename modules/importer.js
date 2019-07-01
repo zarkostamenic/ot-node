@@ -3,6 +3,7 @@ const Graph = require('./Graph');
 const ImportUtilities = require('./ImportUtilities');
 const Queue = require('better-queue');
 const graphConverter = require('./Database/graph-converter');
+const memwatch = require('memwatch-next');
 
 class Importer {
     constructor(ctx) {
@@ -107,22 +108,40 @@ class Importer {
             ImportUtilities.packKeys(vertices, edges, encColor);
         }
 
+        let hd = new memwatch.HeapDiff();
+
         vertices = await Promise.all(vertices.map(async (vertex) => {
             const inserted = await this.graphStorage.addVertex(vertex);
             vertex._key = inserted._key;
             return vertex;
         }));
+
+        let diff = hd.end();
+        console.log('_importJSON1', JSON.stringify(diff));
+
+        hd = new memwatch.HeapDiff();
+
         edges = await Promise.all(edges.map(async (edge) => {
             const inserted = await this.graphStorage.addEdge(edge);
             edge._key = inserted._key;
             return edge;
         }));
 
+        diff = hd.end();
+        console.log('_importJSON2', JSON.stringify(diff));
+
+        hd = new memwatch.HeapDiff();
+
         const denormalizedVertices = graphConverter.denormalizeGraph(
             dataSetId,
             vertices,
             edges,
         ).vertices;
+
+        diff = hd.end();
+        console.log('_importJSON3', JSON.stringify(diff));
+
+        hd = new memwatch.HeapDiff();
 
         // TODO: Use transaction here.
         await Promise.all(denormalizedVertices.map(vertex => this.graphStorage.addVertex(vertex))
@@ -140,6 +159,9 @@ class Importer {
                 .map(vertex => this.graphStorage.updateImports('ot_vertices', vertex, dataSetId))
                 .concat(edges.map(edge => this.graphStorage.updateImports('ot_edges', edge, dataSetId))));
         }
+        diff = hd.end();
+        console.log('_importJSON4', JSON.stringify(diff));
+
         this.log.info('JSON import complete');
 
         if (!packKeys) {

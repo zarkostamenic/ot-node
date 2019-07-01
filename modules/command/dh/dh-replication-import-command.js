@@ -109,8 +109,6 @@ class DhReplicationImportCommand extends Command {
         let diff = hd.end();
         console.log('MEMORY-DIFF1', JSON.stringify(diff));
 
-        hd = new memwatch.HeapDiff();
-
         await this.importer.importJSON({
             dataSetId,
             vertices: litigationVertices,
@@ -118,20 +116,12 @@ class DhReplicationImportCommand extends Command {
             wallet: dcWallet,
         }, true, encColor);
 
-        diff = hd.end();
-        console.log('MEMORY-DIFF2', JSON.stringify(diff));
-
-        hd = new memwatch.HeapDiff();
-
         let importResult = await this.importer.importJSON({
             dataSetId,
             vertices: decryptedVertices,
             edges,
             wallet: dcWallet,
         }, false);
-
-        diff = hd.end();
-        console.log('MEMORY-DIFF3', JSON.stringify(diff));
 
         if (importResult.error) {
             throw Error(importResult.error);
