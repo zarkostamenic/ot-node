@@ -21,8 +21,8 @@ contract Profile {
         hub = Hub(hubAddress);
     }
 
-    modifier onlyHolding(){
-        require(msg.sender == hub.holdingAddress(),
+    modifier onlyContracts(){
+        require(hub.isContract(msg.sender),
         "Function can only be called by Holding contract!");
         _;
     }
@@ -180,7 +180,7 @@ contract Profile {
     }
 
     function releaseTokens(address profile, uint256 amount)
-    public onlyHolding {
+    public onlyContracts {
         require(profile!=address(0));
         ProfileStorage profileStorage = ProfileStorage(hub.profileStorageAddress());
 
@@ -192,7 +192,7 @@ contract Profile {
     }
     
     function transferTokens(address sender, address receiver, uint256 amount)
-    public onlyHolding {
+    public onlyContracts {
         require(sender!=address(0) && receiver!=address(0));
         ProfileStorage profileStorage = ProfileStorage(hub.profileStorageAddress());
 
