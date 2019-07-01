@@ -18,7 +18,14 @@ class ArangoJS {
      */
     constructor(username, password, database, host, port, log) {
         this.log = log;
-        this.db = new Database(`http://${host}:${port}`);
+        this.db = new Database({
+            url: `http://${host}:${port}`,
+            agentOptions: {
+                maxSockets: 50,
+                keepAlive: true,
+                keepAliveMsecs: 1000,
+            },
+        });
         this.db.useDatabase(database);
         this.db.useBasicAuth(username, password);
     }
