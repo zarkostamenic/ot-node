@@ -416,23 +416,23 @@ class GS1Importer {
                             }
 
                             // eslint-disable-next-line
-                            const shippingEventVertices = await this.db.findEvent(senderId, event.partner_id, identifiers.document_id, 'shipping');
-                            for (const shippingEventVertex of shippingEventVertices) {
-                                currentEventEdges.push({
-                                    _key: this.helper.createKey('event_connection', senderId, shippingEventVertex._key, eventKey),
-                                    _from: `${shippingEventVertex._key}`,
-                                    _to: `${eventKey}`,
-                                    edge_type: 'EVENT_CONNECTION',
-                                    transaction_flow: 'OUTPUT',
-                                });
-                                currentEventEdges.push({
-                                    _key: this.helper.createKey('event_connection', senderId, eventKey, shippingEventVertex._key),
-                                    _from: `${eventKey}`,
-                                    _to: `${shippingEventVertex._key}`,
-                                    edge_type: 'EVENT_CONNECTION',
-                                    transaction_flow: 'INPUT',
-                                });
-                            }
+                            // const shippingEventVertices = await this.db.findEvent(senderId, event.partner_id, identifiers.document_id, 'shipping');
+                            // for (const shippingEventVertex of shippingEventVertices) {
+                            //     currentEventEdges.push({
+                            //         _key: this.helper.createKey('event_connection', senderId, shippingEventVertex._key, eventKey),
+                            //         _from: `${shippingEventVertex._key}`,
+                            //         _to: `${eventKey}`,
+                            //         edge_type: 'EVENT_CONNECTION',
+                            //         transaction_flow: 'OUTPUT',
+                            //     });
+                            //     currentEventEdges.push({
+                            //         _key: this.helper.createKey('event_connection', senderId, eventKey, shippingEventVertex._key),
+                            //         _from: `${eventKey}`,
+                            //         _to: `${shippingEventVertex._key}`,
+                            //         edge_type: 'EVENT_CONNECTION',
+                            //         transaction_flow: 'INPUT',
+                            //     });
+                            // }
                         }
                     }
                 }
