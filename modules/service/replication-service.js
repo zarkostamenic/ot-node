@@ -47,8 +47,9 @@ class ReplicationService {
         return Promise.all([COLOR.RED, COLOR.BLUE, COLOR.GREEN]
             .map(async (color) => {
                 const litigationKeyPair = Encryption.generateKeyPair(512);
+                const copy = Utilities.copyObject(vertices);
                 const litEncVertices = ImportUtilities.immutableEncryptVertices(
-                    vertices,
+                    copy,
                     litigationKeyPair.privateKey,
                 );
 
