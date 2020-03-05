@@ -607,7 +607,6 @@ class EventEmitter {
             const {
                 offerId, wallet, dhIdentity, dhNodeId,
             } = message;
-            const { wallet: senderWallet } = transport.extractSenderInfo(request);
             const identity = transport.extractSenderID(request);
 
             // if (senderWallet !== wallet) {
@@ -616,7 +615,7 @@ class EventEmitter {
 
             try {
                 await dcService.handleReplicationRequest(
-                    offerId, wallet, dhNodeId, dhIdentity,
+                    offerId, wallet, identity, dhIdentity,
                     response,
                 );
             } catch (error) {
@@ -668,11 +667,11 @@ class EventEmitter {
         // async
         this._on('kad-replication-finished', async (request) => {
             try {
-                // const dhNodeId = transport.extractSenderID(request);
+                 const dhNodeId = transport.extractSenderID(request);
                 const replicationFinishedMessage = transport.extractMessage(request);
                 // const { wallet } = transport.extractSenderInfo(request);
                 const {
-                    offerId, messageSignature, dhIdentity, wallet, dhNodeId,
+                    offerId, messageSignature, dhIdentity, wallet, // dhNodeId,
                 } = replicationFinishedMessage;
                 await dcService.verifyDHReplication(
                     offerId, messageSignature,

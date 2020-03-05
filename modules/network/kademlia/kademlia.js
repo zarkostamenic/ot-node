@@ -709,7 +709,8 @@ class Kademlia {
      * @returns {*}
      */
     extractSenderID(request) {
-        return request.contact[0];
+        const header = JSON.parse(request.params.header);
+        return header.from;
     }
 
     /**
