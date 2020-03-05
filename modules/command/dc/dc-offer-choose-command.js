@@ -2,6 +2,8 @@ const Command = require('../command');
 const models = require('../../../models/index');
 const Utilities = require('../../Utilities');
 
+// const bugsnag = require('bugsnag');
+
 const { Op } = models.Sequelize;
 
 /**
@@ -17,7 +19,7 @@ class DCOfferChooseCommand extends Command {
         this.remoteControl = ctx.remoteControl;
         this.replicationService = ctx.replicationService;
         this.remoteControl = ctx.remoteControl;
-        this.bugsnag = ctx.bugsnag;
+        this.notifyError = ctx.notifyError;
     }
 
     /**
@@ -55,7 +57,7 @@ class DCOfferChooseCommand extends Command {
         if (excludedDHs == null) {
             const action = isReplacement === true ? 'Replacement' : 'Replication';
             this.logger.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
-            this.bugsnag.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
+            this.notifyError(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
         }
 
         let identities = verifiedReplications

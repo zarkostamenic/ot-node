@@ -181,33 +181,33 @@ process.on('SIGINT', () => {
 });
 
 function notifyBugsnag(error, metadata, subsystem) {
-    if (process.env.NODE_ENV !== 'development') {
-        const cleanConfig = Object.assign({}, config);
-        delete cleanConfig.node_private_key;
-        delete cleanConfig.houston_password;
-        delete cleanConfig.database;
-        delete cleanConfig.blockchain;
+    // if (process.env.NODE_ENV !== 'development') {
+    const cleanConfig = Object.assign({}, config);
+    delete cleanConfig.node_private_key;
+    delete cleanConfig.houston_password;
+    delete cleanConfig.database;
+    delete cleanConfig.blockchain;
 
-        const options = {
-            user: {
-                id: config.node_wallet,
-                identity: config.node_kademlia_id,
-                config: cleanConfig,
-            },
+    const options = {
+        user: {
+            id: config.node_wallet,
+            identity: config.node_kademlia_id,
+            config: cleanConfig,
+        },
+    };
+
+    if (subsystem) {
+        options.subsystem = {
+            name: subsystem,
         };
-
-        if (subsystem) {
-            options.subsystem = {
-                name: subsystem,
-            };
-        }
-
-        if (metadata) {
-            Object.assign(options, metadata);
-        }
-
-        bugsnag.notify(error, options);
     }
+
+    if (metadata) {
+        Object.assign(options, metadata);
+    }
+
+    bugsnag.notify(error, options);
+    // }
 }
 
 function notifyEvent(message, metadata, subsystem) {
@@ -250,21 +250,21 @@ class OTNode {
      */
     async bootstrap() {
         // if (process.env.NODE_ENV !== 'development') {
-            bugsnag.register(
-                pjson.config.bugsnagkey,
-                {
-                    appVersion: pjson.version,
-                    autoNotify: false,
-                    sendCode: true,
-                    releaseStage: config.bugSnag.releaseStage,
-                    logger: {
-                        info: log.info,
-                        warn: log.warn,
-                        error: log.error,
-                    },
-                    logLevel: 'error',
+        bugsnag.register(
+            pjson.config.bugsnagkey,
+            {
+                appVersion: pjson.version,
+                autoNotify: false,
+                sendCode: true,
+                releaseStage: config.bugSnag.releaseStage,
+                logger: {
+                    info: log.info,
+                    warn: log.warn,
+                    error: log.error,
                 },
-            );
+                logLevel: 'error',
+            },
+        );
         // }
 
         try {
