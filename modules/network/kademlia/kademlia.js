@@ -424,12 +424,12 @@ class Kademlia {
                         response.send(next());
                     } else {
                         const result = await new Promise(async (accept, reject) => {
-                            const { contact, header } = await this.node.getContact(destContact);
+                            const { contact } = await this.node.getContact(destContact);
                             this.log.warn(`Request received from ${srcContact} for ${destContact}. Forwarding to: ${contact[0]}`);
                             // should await?
                             this.node.send(
                                 request.method,
-                                { message: request.params.message, header },
+                                { message: request.params.message, header: request.params.header },
                                 contact,
                                 (err, res) => {
                                     if (err) {
@@ -710,7 +710,7 @@ class Kademlia {
      */
     extractSenderID(request) {
         const header = JSON.parse(request.params.header);
-        return header.from;
+        return header.from.toLowerCase();
     }
 
     /**

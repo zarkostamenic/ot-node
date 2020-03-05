@@ -608,6 +608,7 @@ class EventEmitter {
                 offerId, wallet, dhIdentity, dhNodeId,
             } = message;
             const identity = transport.extractSenderID(request);
+            console.log(identity);
 
             // if (senderWallet !== wallet) {
             //     logger.warn(`Wallet in the message differs from replication request for offer ID ${offerId}.`);
