@@ -31,15 +31,8 @@ class DHOfferHandleCommand extends Command {
             offerId,
             wallet: this.config.node_wallet,
             dhIdentity: this.config.erc725Identity,
+            dhNodeId: this.config.identity.toLowerCase(),
         }, dcNodeId);
-
-        if (!response.status) {
-            console.log(response);
-            console.log(JSON.stringify(response));
-            if (!fs.existsSync('kadError.json')) {
-                fs.writeFileSync('kadError.json', '[]');
-            }
-        }
 
         if (response.status === 'fail') {
             const bid = await Models.bids.findOne({

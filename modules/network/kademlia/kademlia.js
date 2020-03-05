@@ -417,14 +417,15 @@ class Kademlia {
             if (request.params.header) {
                 const header = JSON.parse(request.params.header);
                 const destContact = header.to;
+                const srcContact = header.from;
                 header.ttl -= 1;
                 if (header.ttl >= 0) {
                     if (destContact === this.config.identity) {
                         response.send(next());
                     } else {
-                        const result = new Promise(async (accept, reject) => {
+                        const result = await new Promise(async (accept, reject) => {
                             const { contact, header } = await this.node.getContact(destContact);
-                            this.log.debug(`Request received for ${destContact}. Forwarding to: ${contact[0]}`);
+                            this.log.warn(`Request received from ${srcContact} for ${destContact}. Forwarding to: ${contact[0]}`);
                             // should await?
                             this.node.send(
                                 request.method,

@@ -151,6 +151,8 @@ class DhReplicationImportCommand extends Command {
             offerId,
             dhIdentity: this.config.erc725Identity,
             messageSignature: messageSignature.signature,
+            wallet: this.config.node_wallet,
+            dhNodeId: this.config.identity.toLowerCase(),
         };
 
         await this.transport.replicationFinished(replicationFinishedMessage, dcNodeId);
