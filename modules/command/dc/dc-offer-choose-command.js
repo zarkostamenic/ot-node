@@ -55,7 +55,7 @@ class DCOfferChooseCommand extends Command {
         if (excludedDHs == null) {
             const action = isReplacement === true ? 'Replacement' : 'Replication';
             this.logger.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
-            bugsnag.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
+            this.bugsnag.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
         }
 
         let identities = verifiedReplications
