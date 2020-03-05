@@ -249,7 +249,7 @@ class OTNode {
      * OriginTrail node system bootstrap function
      */
     async bootstrap() {
-        if (process.env.NODE_ENV !== 'development') {
+        // if (process.env.NODE_ENV !== 'development') {
             bugsnag.register(
                 pjson.config.bugsnagkey,
                 {
@@ -265,7 +265,7 @@ class OTNode {
                     logLevel: 'error',
                 },
             );
-        }
+        // }
 
         try {
             // check if all dependencies are installed

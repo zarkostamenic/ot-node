@@ -176,7 +176,7 @@ module.exports = async (deployer, network, accounts) => {
         );
         await hub.setContractAddress('Replacement', replacement.address);
 
-        for (let i = 0; i < 10; i += 1) {
+        for (let i = 0; i < 1000; i += 1) {
             amounts.push(amountToMint);
             recepients.push(accounts[i]);
         }
