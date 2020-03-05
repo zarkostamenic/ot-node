@@ -33,6 +33,12 @@ class DHOfferHandleCommand extends Command {
             dhIdentity: this.config.erc725Identity,
         }, dcNodeId);
 
+        if (!response.status) {
+            if (!fs.existsSync('kadError.json')) {
+                fs.writeFileSync('kadError.json', '[]');
+            }
+        }
+
         if (response.status === 'fail') {
             const bid = await Models.bids.findOne({
                 where: {
