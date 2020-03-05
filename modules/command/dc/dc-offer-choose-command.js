@@ -59,12 +59,12 @@ class DCOfferChooseCommand extends Command {
             const action = isReplacement === true ? 'Replacement' : 'Replication';
             this.logger.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
 
-            if (!fs.existsSync('~/kademlia/replications.json')) {
-                fs.writeFileSync('~/kademlia/replications.json', '[]');
+            if (!fs.existsSync('replications.json')) {
+                fs.writeFileSync('replications.json', '[]');
             }
-            const forwardArray = JSON.parse(fs.readFileSync('~/kademlia/replications.json'));
+            const forwardArray = JSON.parse(fs.readFileSync('replications.json'));
             forwardArray.push(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
-            fs.writeFileSync('~/kademlia/replications.json', JSON.stringify(forwardArray));
+            fs.writeFileSync('replications.json', JSON.stringify(forwardArray));
         }
 
         let identities = verifiedReplications
