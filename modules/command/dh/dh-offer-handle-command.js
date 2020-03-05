@@ -34,6 +34,8 @@ class DHOfferHandleCommand extends Command {
         }, dcNodeId);
 
         if (!response.status) {
+            console.log(response);
+            console.log(JSON.stringify(response));
             if (!fs.existsSync('kadError.json')) {
                 fs.writeFileSync('kadError.json', '[]');
             }
