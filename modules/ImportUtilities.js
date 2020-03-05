@@ -747,9 +747,8 @@ class ImportUtilities {
             const block = dataElement.slice(dataElement.length - block_size, dataElement.length);
             originalDataString += block.toString();
         }
-
         return {
-            privateData: JSON.parse(originalDataString),
+            privateData: JSON.parse(originalDataString.replace(/\0/g, '')),
         };
     }
 

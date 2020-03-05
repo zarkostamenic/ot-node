@@ -86,8 +86,8 @@ class DhPurchaseRequestedCommand extends Command {
                 };
                 await this.commandExecutor.add({
                     name: 'dhPurchaseInitiatedCommand',
-                    delay: 1 * 60 * 1000, // todo check why is this necessary
-                    retries: 3,
+                    delay: 5 * 1000, // todo check why is this necessary
+                    retries: 100,
                     data: commandData,
                 });
                 await Models.data_trades.create({

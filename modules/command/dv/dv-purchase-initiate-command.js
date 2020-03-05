@@ -84,8 +84,8 @@ class DvPurchaseInitiateCommand extends Command {
 
         await this.commandExecutor.add({
             name: 'dvPurchaseKeyDepositedCommand',
-            delay: 2 * 60 * 1000, // todo check why isn't it reading the default value
-            retries: 3,
+            delay:  5 * 1000, // todo check why isn't it reading the default value
+            retries: 100,
             data: commandData,
         });
 

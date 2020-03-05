@@ -99,9 +99,9 @@ class DhPurchaseInitiatedCommand extends Command {
     default(map) {
         const command = {
             name: 'dhPurchaseInitiatedCommand',
-            delay: 1 * 60 * 1000, // 5 min todo update to 5 min
+            delay: 5 * 1000, // 5 min todo update to 5 min
             transactional: false,
-            retries: 3,
+            retries: 100,
         };
         Object.assign(command, map);
         return command;

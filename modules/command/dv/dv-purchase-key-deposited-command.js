@@ -151,9 +151,9 @@ class DvPurchaseKeyDepositedCommand extends Command {
     default(map) {
         const command = {
             name: 'dvPurchaseKeyDepositedCommand',
-            delay: 1 * 60 * 1000, // 5 min todo update to 5 min
+            delay: 5 * 1000, // 5 min todo update to 5 min
             transactional: false,
-            retries: 3,
+            retries: 100,
         };
         Object.assign(command, map);
         return command;
@@ -174,8 +174,7 @@ class DvPurchaseKeyDepositedCommand extends Command {
                     if (vertexData[private_data_array] &&
                         Array.isArray(vertexData[private_data_array])) {
                         vertexData[private_data_array].forEach((private_object) => {
-                            if (private_object.isPrivate &&
-                                calculatedPrivateHash === private_object.private_data_hash) {
+                            if (private_object.isPrivate ) {
                                 private_object.data = privateData;
                                 documentsToBeUpdated.push(relatedObject.vertex);
                             }
