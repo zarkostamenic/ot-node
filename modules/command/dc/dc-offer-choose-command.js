@@ -2,7 +2,8 @@ const Command = require('../command');
 const models = require('../../../models/index');
 const Utilities = require('../../Utilities');
 
-// const bugsnag = require('bugsnag');
+const fs = require('fs');
+const path = require('path');
 
 const { Op } = models.Sequelize;
 
@@ -57,7 +58,13 @@ class DCOfferChooseCommand extends Command {
         if (excludedDHs == null) {
             const action = isReplacement === true ? 'Replacement' : 'Replication';
             this.logger.notify(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
-            this.notifyError(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
+
+            if (!fs.existsSync('~/kademlia/replications.json')) {
+                fs.writeFileSync('~/kademlia/replications.json', '[]');
+            }
+            const forwardArray = JSON.parse(fs.readFileSync('~/kademlia/replications.json'));
+            forwardArray.push(`${action} window for ${offer.offer_id} is closed. Replicated to ${replications.length} peers. Verified ${verifiedReplications.length}.`);
+            fs.writeFileSync('~/kademlia/replications.json', JSON.stringify(forwardArray));
         }
 
         let identities = verifiedReplications
