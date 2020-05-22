@@ -151,7 +151,9 @@ class Utilities {
         return new Promise((resolve, reject) => {
             switch (config.database.provider) {
             case 'arangodb': {
-                const systemDb = new Database();
+                const systemDb = new Database({
+                    url: `${config.database.protocol}://${config.database.host}:${config.database.port}`,
+                });
                 systemDb.useBasicAuth(config.database.username, config.database.password);
                 systemDb.listDatabases().then((result) => {
                     let databaseAlreadyExists = false;
@@ -469,7 +471,7 @@ class Utilities {
     static getArangoDbVersion({ database }) {
         return new Promise((resolve, reject) => {
             request
-                .get(`http://${database.host}:${database.port}/_api/version`)
+                .get(`${database.protocol}://${database.host}:${database.port}/_api/version`)
                 .auth(database.username, database.password)
                 .then((res) => {
                     if (res.status === 200) {

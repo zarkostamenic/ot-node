@@ -44,6 +44,7 @@
       "port": 8529,
       "database": "origintrail-develop",
       "host": "localhost",
+      "protocol": "http",
       "max_path_length": 1000
     },
     "blockchain": {
@@ -155,6 +156,7 @@
       "port": 8529,
       "database": "origintrail",
       "host": "localhost",
+      "protocol": "http",
       "max_path_length": 1000
     },
     "blockchain": {
@@ -270,6 +272,7 @@
       "port": 8529,
       "database": "origintrail",
       "host": "localhost",
+      "protocol": "http",
       "max_path_length": 1000
     },
     "blockchain": {
