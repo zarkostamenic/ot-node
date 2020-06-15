@@ -559,3 +559,5 @@ function main() {
 // Make sure the Sequelize meta table is migrated before running main.
 const migrationSequelizeMeta = new M2SequelizeMetaMigration({ logger: log });
 migrationSequelizeMeta.run().then(main);
+
+// THIS SHOULD BE DELETED LATER
