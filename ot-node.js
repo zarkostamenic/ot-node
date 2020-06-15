@@ -561,3 +561,4 @@ const migrationSequelizeMeta = new M2SequelizeMetaMigration({ logger: log });
 migrationSequelizeMeta.run().then(main);
 
 // THIS SHOULD BE DELETED LATER
+// THIS SHOULD ALSO BE DELETED
