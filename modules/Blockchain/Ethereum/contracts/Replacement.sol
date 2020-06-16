@@ -30,7 +30,7 @@ contract Replacement {
         HoldingStorage holdingStorage = HoldingStorage(hub.getContractAddress("HoldingStorage"));
         LitigationStorage litigationStorage = LitigationStorage(hub.getContractAddress("LitigationStorage"));
         ProfileStorage profileStorage = ProfileStorage(hub.getContractAddress("ProfileStorage"));
-        
+
         require(holdingStorage.getOfferCreator(offerId) == litigatorIdentity, "Challenger identity not equal to offer creator identity!");
         require(ERC725(litigatorIdentity).keyHasPurpose(keccak256(abi.encodePacked(msg.sender)), 2), "Sender does not have action purpose set!");
         require(litigationStorage.getLitigationLitigatorIdentity(offerId, holderIdentity) == litigatorIdentity, "Holder can only be replaced by the litigator who initiated the litigation!");
@@ -47,15 +47,15 @@ contract Replacement {
         checkTask(offerId, replacementHolderIdentity, holderIdentity, shift);
 
         // Set new holders
-        require(profileStorage.getStake(replacementHolderIdentity[block.timestamp % 3]).sub(profileStorage.getStakeReserved(replacementHolderIdentity[block.timestamp % 3])) 
-            >= holdingStorage.getHolderStakedAmount(offerId, holderIdentity).sub(holdingStorage.getHolderPaidAmount(offerId, holderIdentity)),
+        require(profileStorage.getStake(replacementHolderIdentity[block.timestamp % 3]).sub(profileStorage.getStakeReserved(replacementHolderIdentity[block.timestamp % 3]))
+            >= (uint256(holdingStorage.getHolderStakedAmount(offerId, holderIdentity))).sub(holdingStorage.getHolderPaidAmount(offerId, holderIdentity)),
             "Replacement holder does not have stake available to take this job!");
         require(profileStorage.getStake(replacementHolderIdentity[block.timestamp % 3]) >= Profile(hub.getContractAddress("Profile")).minimalStake(),
             "Replacement holder does not have the minimal required stake available to take any new job!");
-        
-        require(holdingStorage.getHolderStakedAmount(offerId, replacementHolderIdentity[block.timestamp % 3]) == 0, 
+
+        require(holdingStorage.getHolderStakedAmount(offerId, replacementHolderIdentity[block.timestamp % 3]) == 0,
             "Replacement holder was or is already a holder for this data, cannot be set as a new holder!");
-    
+
         setUpHolders(offerId, holderIdentity, litigatorIdentity, replacementHolderIdentity[block.timestamp % 3]);
         // Set litigation status
         litigationStorage.setLitigationStatus(offerId, holderIdentity, LitigationStorage.LitigationStatus.replaced);
@@ -85,13 +85,13 @@ contract Replacement {
 
         holdingStorage.setHolderLitigationEncryptionType(offerId, replacementHolderIdentity, holdingStorage.getHolderLitigationEncryptionType(offerId, holderIdentity));
 
-        uint256 newStakedAmount = holdingStorage.getHolderStakedAmount(offerId, holderIdentity).sub(holdingStorage.getHolderPaidAmount(offerId, holderIdentity));
+        uint256 newStakedAmount = (uint256(holdingStorage.getHolderStakedAmount(offerId, holderIdentity))).sub(holdingStorage.getHolderPaidAmount(offerId, holderIdentity));
         // Reserve new holder stake in their profile
         profileStorage.setStakeReserved(
             replacementHolderIdentity,
             profileStorage.getStakeReserved(replacementHolderIdentity).add(newStakedAmount)
         );
-        
+
         // Remove the previous holder's stake and move it to the litigator
         // Remove holder stake from reserved
         profileStorage.setStakeReserved(
@@ -108,12 +108,12 @@ contract Replacement {
             litigatorIdentity,
             profileStorage.getStake(litigatorIdentity).add(holdingStorage.getHolderStakedAmount(offerId, holderIdentity))
         );
-        
+
         // Set new holder staked amounts
-        holdingStorage.setHolderStakedAmount(offerId, replacementHolderIdentity, newStakedAmount);
-      
+        holdingStorage.setHolderStakedAmount(offerId, replacementHolderIdentity, uint128(newStakedAmount));
+
         // Set payment timestamps for new holders
-        holdingStorage.setHolderPaymentTimestamp(offerId, replacementHolderIdentity, block.timestamp);
+        holdingStorage.setHolderPaymentTimestamp(offerId, replacementHolderIdentity, uint56(block.timestamp));
     }
 
     function ecrecovery(bytes32 hash, bytes sig) internal pure returns (address) {
@@ -126,7 +126,7 @@ contract Replacement {
 
         bytes memory prefix = "\x19Ethereum Signed Message:\n32";
         bytes32 prefixedHash = keccak256(abi.encodePacked(prefix, hash));
-    
+
         // The signature format is a compact form of:
         //   {bytes32 r}{bytes32 s}{uint8 v}
         // Compact means, uint8 is not padded to 32 bytes.

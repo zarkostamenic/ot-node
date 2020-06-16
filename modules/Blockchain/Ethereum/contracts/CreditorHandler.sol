@@ -53,7 +53,8 @@ contract CreditorHandler {
     public onlyContracts verifyParent(identity, parentIdentity) {
         ProfileStorage profileStorage = ProfileStorage(hub.getContractAddress("ProfileStorage"));
 
-        uint256 jobCost = HoldingStorage(hub.getContractAddress("HoldingStorage")).getOfferTokenAmountPerHolder(bytes32(offerId)).mul(3);
+        uint256 jobCost = HoldingStorage(hub.getContractAddress("HoldingStorage")).getOfferTokenAmountPerHolder(bytes32(offerId));
+        jobCost = jobCost.mul(3);
         uint256 minimalStake = Profile(hub.getContractAddress("Profile")).minimalStake();
 
         if(profileStorage.getWithdrawalPending(parentIdentity) && profileStorage.getWithdrawalAmount(parentIdentity).add(jobCost) > profileStorage.getStake(parentIdentity) - profileStorage.getStakeReserved(parentIdentity)) {

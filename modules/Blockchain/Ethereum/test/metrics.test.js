@@ -78,9 +78,9 @@ async function createOffer(accounts) {
         blueLitigationHash,
         dcNodeId,
         holdingTimeInMinutes,
+        litigationIntervalInMinutes,
         tokenAmountPerHolder,
         dataSetSizeInBytes,
-        litigationIntervalInMinutes,
         { from: DC_wallet },
     );
     const firstOfferGasUsage = res.receipt.gasUsed;
@@ -88,7 +88,8 @@ async function createOffer(accounts) {
     // eslint-disable-next-line prefer-destructuring
     offerId = res.logs[0].args.offerId;
 
-    const task = await holdingStorage.getOfferTask.call(offerId);
+    let task = await holdingStorage.getOfferTask.call(offerId);
+    task = `0x00000000000000000000000000000000000000000000000000000000000000${task.slice(2, 4)}`;
 
     const hash1 = await util.keccakAddressBytes(identities[0], task);
     const hash2 = await util.keccakAddressBytes(identities[1], task);
@@ -148,17 +149,17 @@ async function createOffer(accounts) {
     res = await holding.finalizeOffer(
         DC_identity,
         offerId,
-        shift,
         confimations[0].signature,
         confimations[1].signature,
         confimations[2].signature,
-        [new BN(0), new BN(1), new BN(2)],
         [
             sortedIdentities[0].identity,
             sortedIdentities[1].identity,
             sortedIdentities[2].identity,
         ],
         emptyAddress,
+        shift,
+        '0x000102',
         { from: DC_wallet },
     );
     const secondOfferGasUsage = res.receipt.gasUsed;
@@ -280,5 +281,9 @@ contract('Metrics testing', async (accounts) => {
         console.log(`\t Offer creation average: ${creationAverage}`);
         console.log(`\t Offer finalization average: ${finalizeAverage}`);
         console.log(`\t Total offer average gas usage: ==== ${totalAverage} =====`);
+
+        const startingPoint = 633282.19;
+        const savings = (startingPoint - totalAverage) / startingPoint;
+        console.log(`\t Total savings for optimization: ==== ${savings * 100}% =====`);
     });
 });

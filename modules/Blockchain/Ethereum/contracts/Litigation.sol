@@ -46,7 +46,7 @@ contract Litigation {
         // Set parameters[0] as timestamp
         parameters[0] = litigationStorage.getLitigationTimestamp(offerId, holderIdentity);
         // Set parameters[1] as the litigationIntervalInSeconds
-        parameters[1] = holdingStorage.getOfferLitigationIntervalInMinutes(offerId).mul(60);
+        parameters[1] = (uint256(holdingStorage.getOfferLitigationIntervalInMinutes(offerId))).mul(60);
 
         require(litigationStatus != LitigationStorage.LitigationStatus.replacing,
             "The selected holder is already being replaced, cannot initiate litigation!");
@@ -89,7 +89,7 @@ contract Litigation {
 
         require(litigationStatus == LitigationStorage.LitigationStatus.initiated,
             "Litigation status is not set to initiated, cannot send answer!");
-        require(litigationStorage.getLitigationTimestamp(offerId, holderIdentity) + holdingStorage.getOfferLitigationIntervalInMinutes(offerId).mul(60) >= block.timestamp,
+        require(litigationStorage.getLitigationTimestamp(offerId, holderIdentity) + (uint256(holdingStorage.getOfferLitigationIntervalInMinutes(offerId))).mul(60) >= block.timestamp,
             "The interval for answering has passed, cannot answer litigation!");
 
         // Write answer data into the hash
@@ -125,7 +125,7 @@ contract Litigation {
         // set parameters[0] as the last litigation timestamp
         parameters[0] = litigationStorage.getLitigationTimestamp(offerId, holderIdentity);
         // set parameters[1] as the litigation interval in seconds
-        parameters[1] = holdingStorage.getOfferLitigationIntervalInMinutes(offerId).mul(60);
+        parameters[1] = (uint256(holdingStorage.getOfferLitigationIntervalInMinutes(offerId))).mul(60);
 
        	LitigationStorage.LitigationStatus litigationStatus = litigationStorage.getLitigationStatus(offerId, holderIdentity);
 
@@ -187,9 +187,9 @@ contract Litigation {
         // Multiply the tokenAmountPerHolder by the time the the holder held the data
         amountToTransfer = amountToTransfer.mul(litigationStorage.getLitigationTimestamp(offerId, holderIdentity).sub(holdingStorage.getHolderPaymentTimestamp(offerId, holderIdentity)));
         // Divide the tokenAmountPerHolder by the total time
-        amountToTransfer = amountToTransfer.div(holdingStorage.getOfferHoldingTimeInMinutes(offerId).mul(60));
+        amountToTransfer = amountToTransfer.div((uint256(holdingStorage.getOfferHoldingTimeInMinutes(offerId))).mul(60));
 
-        require(holdingStorage.getHolderPaidAmount(offerId, holderIdentity).add(amountToTransfer) < holdingStorage.getHolderStakedAmount(offerId, holderIdentity),
+        require((uint256(holdingStorage.getHolderPaidAmount(offerId, holderIdentity))).add(amountToTransfer) < holdingStorage.getHolderStakedAmount(offerId, holderIdentity),
             "Holder considered to successfully completed offer, cannot complete litigation!");
 
         // Pay the previous holder
@@ -203,16 +203,16 @@ contract Litigation {
         holdingStorage.setHolderPaidAmount(
             offerId,
             holderIdentity,
-            holdingStorage.getHolderPaidAmount(offerId, holderIdentity).add(amountToTransfer)
+            uint128((uint256(holdingStorage.getHolderPaidAmount(offerId, holderIdentity))).add(amountToTransfer))
         );
 
         // Calculate the remaining amount of tokens
-        amountToTransfer = holdingStorage.getHolderStakedAmount(offerId, holderIdentity).sub(holdingStorage.getHolderPaidAmount(offerId, holderIdentity));
+        amountToTransfer = (uint256(holdingStorage.getHolderStakedAmount(offerId, holderIdentity))).sub(holdingStorage.getHolderPaidAmount(offerId, holderIdentity));
 
         // Unlock previous holder stake
         profileStorage.setStakeReserved(
             holderIdentity,
-            profileStorage.getStakeReserved(holderIdentity).sub(holdingStorage.getHolderStakedAmount(offerId, holderIdentity))
+            (uint256(profileStorage.getStakeReserved(holderIdentity))).sub(holdingStorage.getHolderStakedAmount(offerId, holderIdentity))
         );
 
         // Give the offer creator the reward for litigation
@@ -222,7 +222,7 @@ contract Litigation {
         profileStorage.setStake(litigatorIdentity, profileStorage.getStake(litigatorIdentity).add(amountToTransfer));
 
         // Unlock offer creator's remaining tokens reserved for payment
-        profileStorage.setStakeReserved(litigatorIdentity, profileStorage.getStakeReserved(litigatorIdentity).sub(amountToTransfer));
+        profileStorage.setStakeReserved(litigatorIdentity, (uint256(profileStorage.getStakeReserved(litigatorIdentity))).sub(amountToTransfer));
 
         litigationStorage.setLitigationStatus(offerId, holderIdentity, LitigationStorage.LitigationStatus.replaced);
         litigationStorage.setLitigationTimestamp(offerId, holderIdentity, block.timestamp);
@@ -240,7 +240,7 @@ contract Litigation {
         // Multiply the tokenAmountPerHolder by the time the the holder held the data
         amountToTransfer = amountToTransfer.mul((block.timestamp).sub(holdingStorage.getHolderPaymentTimestamp(offerId, holderIdentity)));
         // Divide the tokenAmountPerHolder by the total time
-        amountToTransfer = amountToTransfer.div(holdingStorage.getOfferHoldingTimeInMinutes(offerId).mul(60));
+        amountToTransfer = amountToTransfer.div((uint256(holdingStorage.getOfferHoldingTimeInMinutes(offerId))).mul(60));
 
         if (amountToTransfer.add(holdingStorage.getHolderPaidAmount(bytes32(offerId), holderIdentity))
             >= holdingStorage.getHolderStakedAmount(bytes32(offerId), holderIdentity)) {
@@ -248,7 +248,6 @@ contract Litigation {
         } else {
             return true;
         }
-
     }
 
     function calculateMerkleTrees(bytes32 offerId, address holderIdentity, bytes32 proofData, bytes32 litigationRootHash, uint256 leafIndex)
