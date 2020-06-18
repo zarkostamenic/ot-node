@@ -14,23 +14,20 @@ const storagePath = process.env.SEQUELIZEDB ?
 
 module.exports = {
     [process.env.NODE_ENV]: {
-        database: 'main',
-        host: '127.0.0.1',
-        dialect: 'sqlite',
-        storage: storagePath,
+        database: 'defaultdb',
+        host: 'db-postgresql-fra1-59217-do-user-361965-0.a.db.ondigitalocean.com',
+        port: 25060,
+        dialect: 'postgres',
+        username: 'doadmin',
+        password: 'upiv1553gqzmat17',
+        native: true,
+        ssl: true,
         migrationStorageTableName: 'sequelize_meta',
         logging: false,
         operatorsAliases: false,
         define: {
             underscored: true,
             timestamps: false,
-        },
-        retry: {
-            match: [
-                /SQLITE_BUSY/,
-            ],
-            name: 'query',
-            max: 5,
         },
     },
 };

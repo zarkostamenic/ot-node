@@ -4,7 +4,7 @@ if (!process.env.NODE_ENV) {
     // Environment not set. Use the production.
     process.env.NODE_ENV = 'testnet';
 }
-
+const { execSync, spawn } = require('child_process');
 const HttpNetwork = require('./modules/network/http/http-network');
 const Kademlia = require('./modules/network/kademlia/kademlia');
 const Transport = require('./modules/network/transport');
@@ -165,6 +165,9 @@ class OTNode {
 
         log.important(`Running in ${process.env.NODE_ENV} environment.`);
 
+        // const output = execSync('./node_modu
+        // les/.bin/sequelize db:migrate --config config/sequelizeConfig.js');
+        // log.trace(output.toString('utf8'));
         // sync models
         try {
             Storage.models = (await models.sequelize.sync()).models;
