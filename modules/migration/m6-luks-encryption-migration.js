@@ -101,6 +101,11 @@ class M6LuksEncryptionMigration {
                 execSync('chmod +x mount-encryption.sh');
                 execSync('./mount-encryption.sh', { stdio: 'inherit' });
                 execSync('rm ./mount-encryption.sh');
+
+                const oldPath = execSync('grep \'/ot-node/data/\' ../../testnet/supervisord.conf')
+                if (oldPath) {
+                    execSync('sed -i \'s#/ot-node/data/#/mnt/ot-node/#g\' ../../testnet/supervisord.conf');
+                }
                 return 0;
             }
             return 1;

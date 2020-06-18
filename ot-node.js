@@ -436,7 +436,9 @@ class OTNode {
                 process.exit(1);
             }
         }
-        migration.mountDevice();
+        if (migration.mountDevice() === 0) {
+            return 3;
+        }
     }
 
     async _runArangoMigration(config) {
