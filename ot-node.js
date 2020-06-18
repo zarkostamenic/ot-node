@@ -196,7 +196,7 @@ class OTNode {
             return;
         }
 
-        if (config.luks_encryption) {
+        if (config.luks_encryption && process.env.OT_NODE_DISTRIBUTION === 'docker') {
             await this._runLUKSEncryptionMigration(config);
         }
 
@@ -425,8 +425,8 @@ class OTNode {
         const m6LuksEncryptionMigrationFilename = '6_m6LUKSEncryptionMigrationFile';
         const migrationDir = path.join(config.appDataPath, 'migrations');
         const migrationFilePath = path.join(migrationDir, m6LuksEncryptionMigrationFilename);
+        const migration = new M6LuksEncryptionMigration({ logger: log, config });
         if (!fs.existsSync(migrationFilePath)) {
-            const migration = new M6LuksEncryptionMigration({ logger: log, config });
             try {
                 log.info('Initializing LUKS encryption migration...');
                 await migration.run();
@@ -436,7 +436,7 @@ class OTNode {
                 process.exit(1);
             }
         }
-        await migration.mountDevice();
+        migration.mountDevice();
     }
 
     async _runArangoMigration(config) {

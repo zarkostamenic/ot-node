@@ -12,7 +12,7 @@ MOUNT=ot-node-encrypted
 apt-get install cryptsetup
 
 #create a file
-fallocate -l 512M /root/${DEVICE}
+fallocate -l 1024M /root/${DEVICE}
 #create luks container in the file
 cryptsetup -y luksFormat /root/${DEVICE}
 #opens the LUKS device and maps it to a name that we supply, in our case creating a file at /dev/mapper/volume1
@@ -23,19 +23,13 @@ mkfs.ext4 -j /dev/mapper/${VOLUME}
 mkdir /mnt/${MOUNT}
 #mount it
 mount /dev/mapper/${VOLUME} /mnt/${MOUNT}
-#unmount the filesystem
-umount /mnt/${MOUNT}
-##close the volume
-cryptsetup luksClose ${VOLUME}
 
 #every time check
 #on open
-cryptsetup luksOpen /root/${DEVICE} ${VOLUME}
-mount /dev/mapper/${VOLUME} /mnt/${MOUNT}
 
 #on close
-umount /mnt/${MOUNT}
-cryptsetup luksClose ${VOLUME}
+#umount /mnt/${MOUNT}
+#cryptsetup luksClose ${VOLUME}
 
 #
 #dd if=/dev/zero of=${DEVICE} bs=1M count=1024

@@ -26,6 +26,20 @@ class M6LuksEncryptionMigration {
             execSync('chmod +x luks-encryption.sh');
             execSync('./luks-encryption.sh', { stdio: 'inherit' });
             execSync('rm ./luks-encryption.sh');
+
+            execSync('cp -r ../../../data /mnt/ot-node-encrypted/');
+            execSync('cp -r /var/lib/arangodb3 /mnt/ot-node-encrypted/');
+            execSync('chmod 700 /mnt/ot-node-encrypted/');
+            execSync('chown -R arangodb:arangodb /mnt/ot-node-encrypted/arangodb3');
+            execSync('sed -i \'s#/var/lib/arangodb3/#/mnt/ot-node-encrypted/arangodb3#g\' /etc/arangodb3/arangod.conf');
+
+            execSync('sed -i \'s#/ot-node-encrypted/data/#/mnt/ot-node/#g\' ../../testnet/supervisord.conf');
+
+
+            execSync('cp ../../scripts/umount-encryption.sh .');
+            execSync('chmod +x umount-encryption.sh');
+            execSync('./umount-encryption.sh', { stdio: 'inherit' });
+            execSync('rm ./umount-encryption.sh');
             // console.log('Running script!');
             // const loop = (execSync('losetup -f').toString()).trim();
             // console.log(`Loop: ${loop}`);
@@ -79,20 +93,17 @@ class M6LuksEncryptionMigration {
     /**
      * Run migration
      */
-    async mountDevice() {
+    mountDevice() {
         try {
-            let loop = execSync('losetup | grep \'encryptedfs.img\' | grep -o \'loop[0-9]\'').toString();
-            if (!loop) {
-                loop = execSync('losetup -f').toString();
-                // todo what if there is no available loop devices
-                // todo what if there is no virtual devices
-                execSync(`losetup /dev/${loop} ./${this.device}`);
-                execSync(`mount /dev/mapper/${this.mount} /${this.mount}`);
-                execSync(`cat <<EOF | cryptsetup luksOpen /dev/${loop} ${this.mount}
-                      otnode
-                      EOF`);
+            const isMounted = execSync('ls /dev/mapper/ | grep \'evolume\'').toString();
+            if (!isMounted) {
+                execSync('cp ../../scripts/mount-encryption.sh .');
+                execSync('chmod +x mount-encryption.sh');
+                execSync('./mount-encryption.sh', { stdio: 'inherit' });
+                execSync('rm ./mount-encryption.sh');
+                return 0;
             }
-            return 0;
+            return 1;
         } catch (error) {
             console.log(error);
             this.log.error('LUKS encryption migration failed!');
