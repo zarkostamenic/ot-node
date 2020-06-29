@@ -8,7 +8,12 @@ module.exports = (sequelize, DataTypes) => {
             defaultValue: () => uuidv4(),
         },
         data: DataTypes.TEXT,
-        status: DataTypes.STRING,
+        status: {
+            type: DataTypes.STRING,
+            validate: {
+                isIn: [['PENDING', 'COMPLETED', 'FAILED']],
+            },
+        },
         timestamp: {
             type: DataTypes.INTEGER,
             defaultValue: () => Date.now(),
