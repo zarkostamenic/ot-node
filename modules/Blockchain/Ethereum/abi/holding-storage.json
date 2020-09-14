@@ -1,228 +1,5 @@
 [
   {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      },
-      {
-        "name": "paidAmount",
-        "type": "uint256"
-      }
-    ],
-    "name": "setHolderPaidAmount",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "task",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setOfferTask",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "blueLitigationHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setOfferBlueLitigationHash",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getOfferDifficulty",
-    "outputs": [
-      {
-        "name": "difficulty",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identities",
-        "type": "address[]"
-      },
-      {
-        "name": "litigationEncryptionTypes",
-        "type": "uint8[]"
-      }
-    ],
-    "name": "setHolders",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getOfferRedLitigationHash",
-    "outputs": [
-      {
-        "name": "redLitigationHash",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      }
-    ],
-    "name": "getHolderLitigationEncryptionType",
-    "outputs": [
-      {
-        "name": "litigationEncryptionType",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "creator",
-        "type": "address"
-      },
-      {
-        "name": "dataSetId",
-        "type": "bytes32"
-      },
-      {
-        "name": "holdingTimeInMinutes",
-        "type": "uint256"
-      },
-      {
-        "name": "tokenAmountPerHolder",
-        "type": "uint256"
-      },
-      {
-        "name": "litigationIntervalInMinutes",
-        "type": "uint256"
-      },
-      {
-        "name": "task",
-        "type": "bytes32"
-      },
-      {
-        "name": "difficulty",
-        "type": "uint256"
-      }
-    ],
-    "name": "setOfferParameters",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "redLitigationHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setOfferRedLitigationHash",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      },
-      {
-        "name": "stakedAmount",
-        "type": "uint256"
-      }
-    ],
-    "name": "setHolderStakedAmount",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "constant": true,
     "inputs": [],
     "name": "hub",
@@ -238,231 +15,8 @@
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      }
-    ],
-    "name": "getHolderStakedAmount",
-    "outputs": [
-      {
-        "name": "stakedAmount",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "greenLitigationHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setOfferGreenLitigationHash",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      }
-    ],
-    "name": "getHolderPaidAmount",
-    "outputs": [
-      {
-        "name": "paidAmount",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [],
     "name": "difficultyOverride",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getOfferTokenAmountPerHolder",
-    "outputs": [
-      {
-        "name": "tokenAmountPerHolder",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      }
-    ],
-    "name": "getHolderPaymentTimestamp",
-    "outputs": [
-      {
-        "name": "paymentTimestamp",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      },
-      {
-        "name": "paymentTimestamp",
-        "type": "uint256"
-      }
-    ],
-    "name": "setHolderPaymentTimestamp",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "holdingTimeInMinutes",
-        "type": "uint256"
-      }
-    ],
-    "name": "setOfferHoldingTimeInMinutes",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "dataSetId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setOfferDataSetId",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getOfferCreator",
-    "outputs": [
-      {
-        "name": "creator",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "redLitigationHash",
-        "type": "bytes32"
-      },
-      {
-        "name": "greenLitigationHash",
-        "type": "bytes32"
-      },
-      {
-        "name": "blueLitigationHash",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setOfferLitigationHashes",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "getDifficultyOverride",
     "outputs": [
       {
         "name": "",
@@ -490,24 +44,6 @@
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "tokenAmountPerHolder",
-        "type": "uint256"
-      }
-    ],
-    "name": "setOfferTokenAmountPerHolder",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -543,134 +79,6 @@
     ],
     "payable": false,
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "litigationIntervalInMinutes",
-        "type": "uint256"
-      }
-    ],
-    "name": "setOfferLitigationIntervalInMinutes",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getOfferHoldingTimeInMinutes",
-    "outputs": [
-      {
-        "name": "holdingTimeInMinutes",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "newHubAddress",
-        "type": "address"
-      }
-    ],
-    "name": "setHubAddress",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "creator",
-        "type": "address"
-      }
-    ],
-    "name": "setOfferCreator",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      }
-    ],
-    "name": "getOfferDataSetId",
-    "outputs": [
-      {
-        "name": "dataSetId",
-        "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "identity",
-        "type": "address"
-      },
-      {
-        "name": "litigationEncryptionType",
-        "type": "uint256"
-      }
-    ],
-    "name": "setHolderLitigationEncryptionType",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "offerId",
-        "type": "bytes32"
-      },
-      {
-        "name": "difficulty",
-        "type": "uint256"
-      }
-    ],
-    "name": "setOfferDifficulty",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -733,6 +141,45 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "name": "hubAddress",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "getDifficultyOverride",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "new_difficulty",
+        "type": "uint256"
+      }
+    ],
+    "name": "setDifficultyOverride",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
       {
@@ -751,35 +198,22 @@
     "type": "function"
   },
   {
-    "constant": false,
+    "constant": true,
     "inputs": [
       {
         "name": "offerId",
         "type": "bytes32"
-      },
-      {
-        "name": "startTime",
-        "type": "uint256"
       }
     ],
-    "name": "setOfferStartTime",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
+    "name": "getOfferCreator",
+    "outputs": [
       {
-        "name": "new_difficulty",
-        "type": "uint256"
+        "name": "creator",
+        "type": "address"
       }
     ],
-    "name": "setDifficultyOverride",
-    "outputs": [],
     "payable": false,
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -790,10 +224,67 @@
         "type": "bytes32"
       }
     ],
-    "name": "getOfferStartTime",
+    "name": "getOfferDataSetId",
     "outputs": [
       {
-        "name": "startTime",
+        "name": "dataSetId",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOfferHoldingTimeInMinutes",
+    "outputs": [
+      {
+        "name": "holdingTimeInMinutes",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOfferTokenAmountPerHolder",
+    "outputs": [
+      {
+        "name": "tokenAmountPerHolder",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOfferLitigationIntervalInMinutes",
+    "outputs": [
+      {
+        "name": "litigationIntervalInMinutes",
         "type": "uint256"
       }
     ],
@@ -828,11 +319,49 @@
         "type": "bytes32"
       }
     ],
-    "name": "getOfferLitigationIntervalInMinutes",
+    "name": "getOfferDifficulty",
     "outputs": [
       {
-        "name": "litigationIntervalInMinutes",
+        "name": "difficulty",
         "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOfferRedLitigationHash",
+    "outputs": [
+      {
+        "name": "redLitigationHash",
+        "type": "bytes32"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "getOfferGreenLitigationHash",
+    "outputs": [
+      {
+        "name": "greenLitigationHash",
+        "type": "bytes32"
       }
     ],
     "payable": false,
@@ -866,11 +395,11 @@
         "type": "bytes32"
       }
     ],
-    "name": "getOfferGreenLitigationHash",
+    "name": "getOfferStartTime",
     "outputs": [
       {
-        "name": "greenLitigationHash",
-        "type": "bytes32"
+        "name": "startTime",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -878,14 +407,485 @@
     "type": "function"
   },
   {
+    "constant": false,
     "inputs": [
       {
-        "name": "hubAddress",
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "creator",
         "type": "address"
       }
     ],
+    "name": "setOfferCreator",
+    "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "constructor"
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "dataSetId",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setOfferDataSetId",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "holdingTimeInMinutes",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOfferHoldingTimeInMinutes",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "tokenAmountPerHolder",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOfferTokenAmountPerHolder",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "litigationIntervalInMinutes",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOfferLitigationIntervalInMinutes",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "task",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setOfferTask",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "difficulty",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOfferDifficulty",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "redLitigationHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setOfferRedLitigationHash",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "greenLitigationHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setOfferGreenLitigationHash",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "blueLitigationHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setOfferBlueLitigationHash",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "startTime",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOfferStartTime",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "creator",
+        "type": "address"
+      },
+      {
+        "name": "dataSetId",
+        "type": "bytes32"
+      },
+      {
+        "name": "holdingTimeInMinutes",
+        "type": "uint256"
+      },
+      {
+        "name": "tokenAmountPerHolder",
+        "type": "uint256"
+      },
+      {
+        "name": "litigationIntervalInMinutes",
+        "type": "uint256"
+      },
+      {
+        "name": "task",
+        "type": "bytes32"
+      },
+      {
+        "name": "difficulty",
+        "type": "uint256"
+      }
+    ],
+    "name": "setOfferParameters",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "redLitigationHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "greenLitigationHash",
+        "type": "bytes32"
+      },
+      {
+        "name": "blueLitigationHash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setOfferLitigationHashes",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identities",
+        "type": "address[]"
+      },
+      {
+        "name": "litigationEncryptionTypes",
+        "type": "uint8[]"
+      }
+    ],
+    "name": "setHolders",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      },
+      {
+        "name": "stakedAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "setHolderStakedAmount",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      },
+      {
+        "name": "paidAmount",
+        "type": "uint256"
+      }
+    ],
+    "name": "setHolderPaidAmount",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      },
+      {
+        "name": "litigationEncryptionType",
+        "type": "uint256"
+      }
+    ],
+    "name": "setHolderLitigationEncryptionType",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      },
+      {
+        "name": "paymentTimestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "setHolderPaymentTimestamp",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      }
+    ],
+    "name": "getHolderStakedAmount",
+    "outputs": [
+      {
+        "name": "stakedAmount",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      }
+    ],
+    "name": "getHolderPaidAmount",
+    "outputs": [
+      {
+        "name": "paidAmount",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      }
+    ],
+    "name": "getHolderLitigationEncryptionType",
+    "outputs": [
+      {
+        "name": "litigationEncryptionType",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "offerId",
+        "type": "bytes32"
+      },
+      {
+        "name": "identity",
+        "type": "address"
+      }
+    ],
+    "name": "getHolderPaymentTimestamp",
+    "outputs": [
+      {
+        "name": "paymentTimestamp",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "newHubAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setHubAddress",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]
