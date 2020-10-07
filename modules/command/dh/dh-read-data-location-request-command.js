@@ -17,6 +17,7 @@ class DHReadDataLocationRequestCommand extends Command {
         this.config = ctx.config;
         this.web3 = ctx.web3;
         this.transport = ctx.transport;
+        this.importService = ctx.importService;
     }
 
     /**
@@ -70,7 +71,9 @@ class DHReadDataLocationRequestCommand extends Command {
                     },
                 });
 
-                if (offer) { validImports.push(imports[i].data_set_id); }
+                if (offer) {
+                    validImports.push(imports[i].data_set_id);
+                }
             } else {
                 validImports.push(imports[i].data_set_id);
             }
@@ -116,10 +119,14 @@ class DHReadDataLocationRequestCommand extends Command {
                 },
             },
         });
-
+        const importMetadata = await
+        this.importService.getMultipleDatasetMetadata(replicatedImportIds);
         let size = 0;
         const importObjects = replicatedImportIds.map((dataSetId) => {
-            size = dataInfos.find(di => di.data_set_id === dataSetId).otjson_size_in_bytes;
+            const dataInfo = dataInfos.find(di => di.data_set_id === dataSetId);
+            const metadata = importMetadata.find(im => im._key === dataSetId);
+            size = dataInfo.otjson_size_in_bytes;
+            const data_creator = metadata.datasetHeader.dataCreator;
             const importDetails = graphImportDetails
                 .filter(x => x.datasets.indexOf(dataSetId) >= 0);
             const permissionedData = [];
@@ -135,6 +142,8 @@ class DHReadDataLocationRequestCommand extends Command {
                 return {
                     data_set_id: dataSetId,
                     size,
+                    data_creator,
+                    dc_node_wallet: dataInfo.data_provider_wallet,
                     calculated_price: new BN(size, 10).mul(new BN(dataPrice, 10)).toString(),
                     permissioned_data: permissionedData,
                 };
@@ -142,6 +151,8 @@ class DHReadDataLocationRequestCommand extends Command {
             return {
                 data_set_id: dataSetId,
                 size,
+                data_creator,
+                dc_node_wallet: dataInfo.data_provider_wallet,
                 calculated_price: new BN(size, 10).mul(new BN(dataPrice, 10)).toString(),
             };
         });
