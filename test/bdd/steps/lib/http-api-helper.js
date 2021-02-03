@@ -4,7 +4,7 @@ const path = require('path');
 
 /**
  * @typedef {Object} ImportInfo
- * @property {string} data_provider_wallet Data provider wallet.
+ * @property {string} data_provider_wallets Data provider wallets.
  * @property {Object} import Import object with vertices and edges.
  * @property {string} import_hash SHA3 of the import (sorted import object to JSON with padding 0).
  * @property {string} root_hash Merkle root-hash of the import (sorted import object).
@@ -291,7 +291,7 @@ async function apiImportContent(nodeRpcUrl, content = '', importType = 'GS1') {
  * @property {string} root_hash Merkle root-hash of the import (sorted import object).
  * @property {Number} data_size Size in bytes of whole import.
  * @property {string} transaction_hash Transaction hash of the write-fingerprint transaction.
- * @property {string} data_provider_wallet Wallet of initial data provider.
+ * @property {string} data_provider_wallets Wallets of initial data provider.
  */
 
 /**
@@ -433,6 +433,33 @@ async function apiQueryNetwork(nodeRpcUrl, jsonQuery) {
             {
                 method: 'POST',
                 uri: `${nodeRpcUrl}/api/latest/network/query`,
+                json: true,
+                body: jsonQuery,
+            },
+            (err, res, body) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                accept(body);
+            },
+        );
+    });
+}
+
+/**
+ * Fetch api/permissioned_data/remove
+ *
+ * @param {string} nodeRpcUrl URL in following format http://host:port
+ * @param {json} jsonQuery
+ * @return {Promise.<status>}
+ */
+async function apiRemovePermissionedData(nodeRpcUrl, jsonQuery) {
+    return new Promise((accept, reject) => {
+        request(
+            {
+                method: 'POST',
+                uri: `${nodeRpcUrl}/api/latest/permissioned_data/remove`,
                 json: true,
                 body: jsonQuery,
             },
@@ -665,6 +692,72 @@ async function apiTrail(nodeRpcUrl, params) {
         );
     });
 }
+
+
+async function apiTrailLookup(nodeRpcUrl, params) {
+    return new Promise((accept, reject) => {
+        request(
+            {
+                method: 'POST',
+                body: params,
+                headers: { 'Content-Type': 'application/json' },
+                uri: `${nodeRpcUrl}/api/latest/trail/lookup`,
+                json: true,
+            },
+            (err, res, body) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                accept(body);
+            },
+        );
+    });
+}
+
+
+async function apiTrailFind(nodeRpcUrl, params) {
+    return new Promise((accept, reject) => {
+        request(
+            {
+                method: 'POST',
+                body: params,
+                headers: { 'Content-Type': 'application/json' },
+                uri: `${nodeRpcUrl}/api/latest/trail/find`,
+                json: true,
+            },
+            (err, res, body) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                accept(body);
+            },
+        );
+    });
+}
+
+
+async function apiTrailFindResult(nodeRpcUrl, handler_id) {
+    return new Promise((accept, reject) => {
+        request(
+            {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                uri: `${nodeRpcUrl}/api/latest/trail/find/result/${handler_id}`,
+                json: true,
+            },
+            (err, res, body) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+                accept(body);
+            },
+        );
+    });
+}
+
 
 /**
  * Fetch /api/latest/get_merkle_proofs/
@@ -905,4 +998,8 @@ module.exports = {
     apiPermissionedDataGetPrice,
     apiPermissionedDataGetPriceResult,
     apiPermissionedDataPurchase,
+    apiRemovePermissionedData,
+    apiTrailLookup,
+    apiTrailFind,
+    apiTrailFindResult,
 };

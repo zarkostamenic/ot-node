@@ -1,6 +1,9 @@
 const pjson = require('../../package.json');
 const Models = require('../../models/index');
 const ImportUtilities = require('../ImportUtilities');
+const fs = require('fs');
+const path = require('path');
+const Utilities = require('../Utilities');
 
 class InfoController {
     constructor(ctx) {
@@ -29,12 +32,10 @@ class InfoController {
                 const numberOfVertices = await this.graphStorage.getDocumentsCount('ot_vertices');
                 const numberOfEdges = await this.graphStorage.getDocumentsCount('ot_edges');
 
-                const { node_wallet } = this.blockchain.getWallet().response;
-                // todo pass blockchain identity
+                const blockchain = this.getBlockchainInfo();
+
                 Object.assign(basicConfig, {
-                    blockchain: this.blockchain.getBlockchainTitle().response,
-                    node_wallet,
-                    erc_725_identity: this.profileService.getIdentity(),
+                    blockchain,
                     graph_size: {
                         number_of_vertices: numberOfVertices,
                         number_of_edges: numberOfEdges,
@@ -46,6 +47,130 @@ class InfoController {
             res.send(basicConfig);
         } catch (error) {
             this.logger.error(`Failed to process /api/info route. ${error}`);
+            res.status(500);
+            res.send({
+                message: error,
+            });
+        }
+    }
+
+    async getBlockchains(req, res) {
+        this.logger.api('GET: Node blockchains request received.');
+
+        try {
+            if (!this.config.is_bootstrap_node) {
+                const blockchain = this.getBlockchainInfo();
+                res.status(200);
+                res.send(blockchain);
+            } else {
+                res.status(200);
+                res.send({
+                    message: 'Node is running as bootstrap, no blockchain is initialized',
+                });
+            }
+        } catch (error) {
+            this.logger.error(`Failed to process /api/info route. ${error}`);
+            res.status(500);
+            res.send({
+                message: error.toString(),
+            });
+        }
+    }
+
+    getBlockchainInfo() {
+        const identityResponses = this.blockchain.getAllIdentities();
+        const blockchain_info = [];
+        for (const identityResponse of identityResponses) {
+            const { blockchain_id, response: identity } = identityResponse;
+            const { node_wallet } =
+                this.blockchain.getWallet(blockchain_id).response;
+            const blockchain_title =
+                this.blockchain.getBlockchainTitle(blockchain_id).response;
+
+            blockchain_info.push({
+                blockchain_title,
+                blockchain_id,
+                node_wallet,
+                identity,
+            });
+        }
+
+        return blockchain_info;
+    }
+
+    async getNodeData(req, res) {
+        this.logger.api('GET: Node data request received.');
+        try {
+            const { message, messageSignature } = req.body;
+            const wallets = this.blockchain.getAllWallets()
+                .map(e => Utilities.normalizeHex(e.response.node_wallet));
+            if (
+                !message ||
+                !messageSignature ||
+                !wallets.includes(Utilities.normalizeHex(message.wallet)) ||
+                !Utilities.isMessageSigned(message, messageSignature)
+            ) {
+                this.logger.error('Unauthorized node data request');
+                res.status(403);
+                res.send({
+                    message: 'Unauthorized node data request',
+                });
+            }
+
+            await this.transport.dumpNetworkInfo();
+            const response = {};
+
+            if (message.blockchain) {
+                response.blockchain = [];
+                for (const implementation of message.blockchain) {
+                    const { network_id, identity, wallet } = implementation;
+                    const result = { network_id };
+                    if (identity) {
+                        result.identity = this.blockchain.getIdentity(network_id).response;
+                    }
+                    if (wallet) {
+                        result.wallet = this.blockchain.getWallet(network_id).response;
+                    }
+
+                    response.blockchain.push(result);
+                }
+            }
+
+            if (message.networkIdentity) {
+                response.networkIdentity = fs.readFileSync(path.join(
+                    this.config.appDataPath,
+                    this.config.identity_filepath,
+                )).toString();
+            }
+            if (message.kademliaCert) {
+                response.kademliaCert = fs.readFileSync(path.join(
+                    this.config.appDataPath,
+                    this.config.ssl_certificate_path,
+                )).toString();
+            }
+            if (message.kademliaKey) {
+                response.kademliaKey = fs.readFileSync(path.join(
+                    this.config.appDataPath,
+                    this.config.ssl_keypath,
+                )).toString();
+            }
+            if (message.bootstraps) {
+                response.bootstraps = fs.readFileSync(path.join(
+                    this.config.appDataPath,
+                    'bootstraps.json',
+                )).toString();
+            }
+            if (message.routingTable) {
+                response.routingTable = fs.readFileSync(path.join(
+                    this.config.appDataPath,
+                    'router.json',
+                )).toString();
+            }
+
+            res.status(200);
+            res.send(response);
+        } catch (error) {
+            this.logger.error(`Failed to process /api/node_data route. ${error}`);
             res.status(500);
             res.send({
                 message: error,
@@ -74,9 +199,9 @@ class InfoController {
             return;
         }
 
-        const identity = await this.graphStorage.findIssuerIdentityForDatasetId(datasetId);
+        const identities = await this.graphStorage.findIssuerIdentitiesForDatasetId(datasetId);
 
-        if (!identity && identity.length > 0) {
+        if (!identities && identities.length > 0) {
             this.logger.info(`Issuer identity for data set ID ${datasetId} does not exist.`);
             response.status(404);
             response.send({
@@ -85,8 +210,8 @@ class InfoController {
             return;
         }
 
-        const transactionHash = await ImportUtilities
-            .getTransactionHash(datasetId, dataInfo.origin);
+        const replicationInfo = await ImportUtilities
+            .getReplicationInfo(datasetId, dataInfo.origin);
 
         const result = {
             dataset_id: datasetId,
@@ -96,34 +221,11 @@ class InfoController {
             root_hash: dataInfo.root_hash,
             data_hash: dataInfo.data_hash,
             total_graph_entities: dataInfo.total_documents,
-            transaction_hash: transactionHash,
-            blockchain_network: this.config.network.id,
-            data_provider_wallet: dataInfo.data_provider_wallet,
-            data_creator: {
-                identifier_type: identity[0].identifierType,
-                identifier_value: identity[0].identifierValue,
-                validation_schema: identity[0].validationSchema,
-            },
-
+            data_provider_wallets: JSON.parse(dataInfo.data_provider_wallets),
+            data_creator_identities: identities,
+            replication_info: replicationInfo,
         };
-        const offer = await Models.offers.findOne({ where: { data_set_id: datasetId } });
-        if (offer) {
-            const replication_info = {
-                offer_id: offer.offer_id,
-                number_of_replications: offer.number_of_replications,
-                number_of_verified_replications: offer.number_of_verified_replications,
-                gas_price_used_for_price_calculation: offer.gas_price_used_for_price_calculation,
-                holding_time_in_minutes: offer.holding_time_in_minutes,
-                offer_finalize_transaction_hash: offer.offer_finalize_transaction_hash,
-                price_factor_used_for_price_calculation:
-                offer.price_factor_used_for_price_calculation,
-                status: offer.status,
-                token_amount_per_holder: offer.token_amount_per_holder,
-                trac_in_eth_used_for_price_calculation:
-                offer.trac_in_eth_used_for_price_calculation,
-            };
-            result.replication_info = replication_info;
-        }
+
         response.status(200);
         response.send(result);
     }

@@ -95,7 +95,7 @@ class DHService {
             return; // the offer is mine
         }
 
-        this.logger.notify(`Offer ${offerId} has been created by ${dcNodeId}.`);
+        this.logger.notify(`Offer ${offerId} has been created by ${dcNodeId} on blockchain ${blockchain_id}.`);
         if (dataSetSizeInBytes) {
             const dataSizeInMB = dataSetSizeInBytes / 1000000;
             if (dataSizeInMB > this.config.dh_maximum_dataset_filesize_in_mb) {
@@ -121,6 +121,7 @@ class DHService {
             dataSetSizeInBytes,
             holdingTimeInMinutes,
             dh_price_factor,
+            blockchain_id,
         );
         const myOfferPrice = offerPrice.finalPrice;
         const dhTokenPrice = new BN(myOfferPrice.toString(), 10);
@@ -136,6 +137,7 @@ class DHService {
         const offer = await this.blockchain.getOffer(offerId, blockchain_id).response;
         const bid = await Models.bids.create({
             offer_id: offerId,
+            blockchain_id,
             dc_identity: offer.creator,
             data_set_id: dataSetId,
             dc_node_id: dcNodeId,
@@ -498,7 +500,7 @@ class DHService {
                     wallet: DH_WALLET,
                     nodeId: KAD_ID
                     agreementStatus: CONFIRMED/REJECTED,
-                    data_provider_wallet,
+                    data_provider_wallets,
                     encryptedData: { … }
                 },
                 messageSignature: {
@@ -525,7 +527,7 @@ class DHService {
                 id,
                 wallet: node_wallet,
                 nodeId: this.config.identity,
-                data_provider_wallet: dataInfo.data_provider_wallet,
+                data_provider_wallets: JSON.parse(dataInfo.data_provider_wallets),
                 agreementStatus: 'CONFIRMED',
                 encryptedData: {
                     vertices,

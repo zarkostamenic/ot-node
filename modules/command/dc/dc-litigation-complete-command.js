@@ -26,6 +26,7 @@ class DCLitigationCompleteCommand extends Command {
     async execute(command, transaction) {
         const {
             offerId,
+            blockchain_id,
             dhIdentity,
             blockIndex,
             objectIndex,
@@ -44,8 +45,7 @@ class DCLitigationCompleteCommand extends Command {
             return Command.empty();
         }
 
-        // todo pass blockchain identity
-        const dcIdentity = utilities.normalizeHex(this.profileService.getIdentity());
+        const dcIdentity = this.profileService.getIdentity(blockchain_id);
 
         const challenge = await models.challenges.findOne({
             where:
@@ -65,6 +65,7 @@ class DCLitigationCompleteCommand extends Command {
             answer,
             challenge.test_index,
             true,
+            blockchain_id,
         ).response;
         return {
             commands: [

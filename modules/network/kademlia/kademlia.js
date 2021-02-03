@@ -25,6 +25,7 @@ const { NetworkRequestIgnoredError } = require('../../errors/index');
 
 const directMessageRequests = [
     { methodName: 'replicationRequest', routeName: 'kad-replication-request' },
+    { methodName: 'replicationData', routeName: 'kad-replication-data' },
     { methodName: 'replacementReplicationRequest', routeName: 'kad-replacement-replication-request' },
     { methodName: 'replicationFinished', routeName: 'kad-replication-finished' },
     { methodName: 'replacementReplicationFinished', routeName: 'kad-replacement-replication-finished' },
@@ -174,7 +175,8 @@ class Kademlia {
                     'kad-data-price-request', 'kad-data-price-response',
                     'kad-permissioned-data-read-response', 'kad-permissioned-data-read-request',
                     'kad-send-encrypted-key', 'kad-encrypted-key-process-result',
-                    'kad-replication-request', 'kad-replacement-replication-request', 'kad-replacement-replication-finished',
+                    'kad-replication-request', 'kad-replacement-replication-request',
+                    'kad-replication-data', 'kad-replacement-replication-finished',
                     'kad-public-key-request', 'kad-purchase-complete',
                 ],
                 difficulty: this.config.network.solutionDifficulty,
@@ -303,6 +305,7 @@ class Kademlia {
      * Note: this method tries to find possible bootstrap nodes
      */
     async joinNetwork(callback) {
+        const start = Date.now();
         const peers = Array.from(new Set(this.config.network.bootstraps
             .concat(await this.node.rolodex.getBootstrapCandidates())));
 
@@ -321,6 +324,13 @@ class Kademlia {
             });
 
             callback(null, null);
+        } else if (this.kademliaUtilities.getRoutingTable(this.node.router)) {
+            this.log.info(`Skipping network join, using existing ${peers.length} seeds`);
+
+            const end = Date.now();
+            this.log.info(`Network join lasted ${end - start} ms`);
+
+            callback(null, peers);
         } else {
             this.log.info(`Joining network from ${peers.length} seeds`);
             async.detectSeries(peers, (url, done) => {
@@ -333,10 +343,25 @@ class Kademlia {
                     this.log.error('Failed to join network, will retry in 1 minute');
                     callback(new Error('Failed to join network'));
                 } else {
+                    this.kademliaUtilities.setBootstraps(peers);
+                    this.kademliaUtilities.setRoutingTable(this.node.router);
+
+                    const end = Date.now();
+                    this.log.info(`Network join lasted ${end - start} ms`);
+
                     callback(null, result);
                 }
             });
         }
+    }
+
+    async dumpNetworkInfo() {
+        const peers = Array.from(new Set(this.config.network.bootstraps
+            .concat(await this.node.rolodex.getBootstrapCandidates())));
+
+
+        this.kademliaUtilities.setBootstraps(peers);
+        this.kademliaUtilities.setRoutingTable(this.node.router);
     }
 
     /**
@@ -494,8 +519,12 @@ class Kademlia {
 
         // sync
         this.node.use('kad-replication-request', (request, response, next) => {
-            this.log.debug('kad-replication-request received');
             this.emitter.emit('kad-replication-request', request, response);
+        });
+
+        // sync
+        this.node.use('kad-replication-data', (request, response, next) => {
+            this.emitter.emit('kad-replication-data', request, response);
         });
 
         // sync
@@ -513,7 +542,6 @@ class Kademlia {
 
         // async
         this.node.use('kad-replication-finished', (request, response, next) => {
-            this.log.debug('kad-replication-finished received');
             this.emitter.emit('kad-replication-finished', request, response);
             response.send([]);
         });

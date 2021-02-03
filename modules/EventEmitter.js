@@ -99,6 +99,7 @@ class EventEmitter {
             dcService,
             dvController,
             commandExecutor,
+            dhController,
         } = this.ctx;
 
         this._on('api-trail', (data) => {
@@ -210,9 +211,9 @@ class EventEmitter {
                     total_documents: di.total_documents,
                     root_hash: di.root_hash,
                     data_size: di.data_size,
-                    transaction_hash: await ImportUtilities
-                        .getTransactionHash(di.data_set_id, di.origin),
-                    data_provider_wallet: di.data_provider_wallet,
+                    replication_info: await ImportUtilities
+                        .getReplicationInfo(di.data_set_id, di.origin),
+                    data_provider_wallets: JSON.parse(di.data_provider_wallets),
                 }));
                 data.response.send(await Promise.all(promises));
             } catch (e) {
@@ -222,24 +223,6 @@ class EventEmitter {
                     message: 'Failed to get information about imports',
                 });
             }
-        });
-
-        this._on('api-query', (data) => {
-            logger.info(`Get vertices triggered with query ${JSON.stringify(data.query)}`);
-            product.getVertices(data.query).then((res) => {
-                if (res.length === 0) {
-                    data.response.status(204);
-                } else {
-                    data.response.status(200);
-                }
-                data.response.send(res);
-            }).catch((error) => {
-                logger.error(`Failed to get vertices for query ${JSON.stringify(data.query)}`);
-                data.response.status(500);
-                data.response.send({
-                    message: `Failed to get vertices for query ${JSON.stringify(data.query)}`,
-                });
-            });
         });
 
         this._on('api-offer-status', async (data) => {
@@ -268,7 +251,7 @@ class EventEmitter {
             logger.info(`Payout called for offer ${offerId}.`);
             const bid = await Models.bids.findOne({ where: { offer_id: offerId } });
             if (bid) {
-                await profileService.payOut(offerId, urgent);
+                await profileService.payOut(offerId, urgent, bid.dataValues.blockchain_id);
 
                 data.response.status(200);
                 data.response.send({
@@ -312,16 +295,16 @@ class EventEmitter {
                     default: throw Error('Invalid response format.');
                     }
 
-                    const transactionHash = await ImportUtilities
-                        .getTransactionHash(dataSetId, dataInfo.origin);
+                    const replicationInfo = await ImportUtilities
+                        .getReplicationInfo(dataSetId, dataInfo.origin);
 
                     data.response.status(200);
                     data.response.send({
                         dataSetId,
                         document: formattedDataset,
                         root_hash: dataInfo.root_hash,
-                        transaction: transactionHash,
-                        data_provider_wallet: dataInfo.data_provider_wallet,
+                        data_provider_wallets: JSON.parse(dataInfo.data_provider_wallets),
+                        replication_info: replicationInfo,
                     });
                 }
             } catch (error) {
@@ -435,6 +418,7 @@ class EventEmitter {
             dcService,
             dvController,
             dcController,
+            dhController,
             networkService,
         } = this.ctx;
 
@@ -482,15 +466,16 @@ class EventEmitter {
             try {
                 const {
                     purchase_id,
+                    blockchain_id,
                     data_set_id,
                     ot_object_id,
                     seller_node_id,
-                    seller_erc_id,
-                    price,
+                    seller_erc_ids,
+                    prices,
                 } = message;
                 await dvController.handleNewDataSeller(
-                    purchase_id, seller_erc_id, seller_node_id,
-                    data_set_id, ot_object_id, price,
+                    purchase_id, blockchain_id, seller_erc_ids, seller_node_id,
+                    data_set_id, ot_object_id, prices,
                 );
             } catch (error) {
                 const errorMessage = `Failed to process purchase completion message. ${error}.`;
@@ -512,11 +497,13 @@ class EventEmitter {
                 }
             }
 
-            const { offerId, wallet, dhIdentity } = replicationMessage;
+            const {
+                offerId, wallet, dhIdentity, async_enabled,
+            } = replicationMessage;
             const identity = transport.extractSenderID(request);
             try {
                 await dcService.handleReplicationRequest(
-                    offerId, wallet, identity, dhIdentity,
+                    offerId, wallet, identity, dhIdentity, async_enabled,
                     response,
                 );
             } catch (error) {
@@ -533,11 +520,49 @@ class EventEmitter {
             }
         });
 
+        this._on('kad-replication-data', async (request, response) => {
+            const kadReplicationRequest = transport.extractMessage(request);
+            let replicationMessage = kadReplicationRequest;
+
+            if (kadReplicationRequest.messageSignature) {
+                const { message, messageSignature } = kadReplicationRequest;
+                replicationMessage = message;
+
+                if (!Utilities.isMessageSigned(message, messageSignature)) {
+                    logger.warn(`We have a forger here. Signature doesn't match for message: ${JSON.stringify(message)}`);
+                    return;
+                }
+            }
+
+            const senderIdentity = transport.extractSenderID(request);
+            try {
+                await dhController.handleReplicationData(
+                    senderIdentity,
+                    replicationMessage,
+                    response,
+                );
+            } catch (error) {
+                const errorMessage = `Failed to handle replication data. ${error}.`;
+                logger.warn(errorMessage);
+
+                try {
+                    await transport.sendResponse(response, {
+                        status: 'fail',
+                    });
+                } catch (e) {
+                    logger.error(`Failed to send response 'fail' status. Error: ${e}.`); // TODO handle this case
+                }
+            }
+        });
+
         // sync
         this._on('kad-replacement-replication-request', async (request, response) => {
             try {
                 const message = transport.extractMessage(request);
-                const { offerId, wallet, dhIdentity } = message;
+                const {
+                    offerId, wallet, dhIdentity,
+                    async_enabled,
+                } = message;
                 const { wallet: senderWallet } = transport.extractSenderInfo(request);
                 const identity = transport.extractSenderID(request);
 
@@ -546,7 +571,7 @@ class EventEmitter {
                 }
 
                 await dcService.handleReplacementRequest(
-                    offerId, wallet, identity, dhIdentity,
+                    offerId, wallet, identity, dhIdentity, async_enabled,
                     response,
                 );
             } catch (error) {

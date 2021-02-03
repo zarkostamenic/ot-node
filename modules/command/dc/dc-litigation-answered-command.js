@@ -20,6 +20,7 @@ class DCLitigationAnsweredCommand extends Command {
     async execute(command) {
         const {
             offerId,
+            blockchain_id,
             dhIdentity,
             blockIndex,
             objectIndex,
@@ -41,7 +42,7 @@ class DCLitigationAnsweredCommand extends Command {
                     && utilities.compareHexStrings(dhIdentity, holderIdentity);
             });
             if (event) {
-                event.finished = true;
+                event.finished = 1;
                 await event.save({ fields: ['finished'] });
 
                 this.logger.important(`Litigation answered for DH ${dhIdentity} and offer ${offerId}.`);
@@ -67,6 +68,7 @@ class DCLitigationAnsweredCommand extends Command {
                         {
                             data: {
                                 offerId,
+                                blockchain_id,
                                 dhIdentity,
                                 blockIndex,
                                 objectIndex,

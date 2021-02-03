@@ -22,18 +22,24 @@ class DcOfferTaskCommand extends Command {
      * @param command
      */
     async execute(command) {
-        const { dataSetId, internalOfferId, handler_id } = command.data;
+        const {
+            dataSetId,
+            internalOfferId,
+            handler_id,
+            blockchain_id,
+        } = command.data;
 
         const dataSetIdNorm = Utilities.normalizeHex(dataSetId.toString('hex').padStart(64, '0'));
         const event = await Models.events.findOne({
             where: {
                 event: 'OfferTask',
                 data_set_id: dataSetIdNorm,
+                blockchain_id,
                 finished: 0,
             },
         });
         if (event) {
-            event.finished = true;
+            event.finished = 1;
             await event.save({ fields: ['finished'] });
 
             const data = JSON.parse(event.data);
@@ -73,7 +79,7 @@ class DcOfferTaskCommand extends Command {
                 },
             );
 
-            this.logger.trace(`Offer successfully started for data set ${dataSetIdNorm}. Offer ID ${eventOfferId}. Internal offer ID ${internalOfferId}.`);
+            this.logger.trace(`Offer successfully started for data set ${dataSetIdNorm} on blockchain ${blockchain_id}. Offer ID ${eventOfferId}. Internal offer ID ${internalOfferId}.`);
             return this.continueSequence(this.pack(command.data), command.sequence);
         }
 

@@ -1,3 +1,6 @@
+const path = require('path');
+const fs = require('fs');
+
 const Utilities = require('../Utilities');
 const Models = require('../../models');
 const constants = require('../constants');
@@ -12,6 +15,9 @@ class DHController {
         this.blockchain = ctx.blockchain;
         this.graphStorage = ctx.graphStorage;
         this.importService = ctx.importService;
+        this.transport = ctx.transport;
+        this.commandExecutor = ctx.commandExecutor;
+        this.trailService = ctx.trailService;
         this.profileService = ctx.profileService;
     }
 
@@ -31,6 +37,44 @@ class DHController {
         return true;
     }
 
+    async handleReplicationData(dcNodeId, replicationMessage, response) {
+        try {
+            const {
+                offer_id: offerId, otJson, permissionedData,
+            } = replicationMessage;
+
+
+            this.logger.notify(`Received replication data for offer_id ${offerId} from node ${dcNodeId}.`);
+
+            const cacheDirectory = path.join(this.config.appDataPath, 'import_cache');
+
+            await Utilities.writeContentsToFile(
+                cacheDirectory,
+                offerId,
+                JSON.stringify({
+                    otJson,
+                    permissionedData,
+                }),
+            );
+
+            const packedResponse = DHController._stripResponse(replicationMessage);
+            Object.assign(packedResponse, {
+                dcNodeId,
+                documentPath: path.join(cacheDirectory, offerId),
+            });
+
+            await this.commandExecutor.add({
+                name: 'dhReplicationImportCommand',
+                data: packedResponse,
+                transactional: false,
+            });
+        } catch (e) {
+            await this.transport.sendResponse(response, { status: 'fail', message: e });
+        }
+
+        await this.transport.sendResponse(response, { status: 'success' });
+    }
+
     async whitelistViewer(request, response) {
         this.logger.api('POST: Whitelisting of data viewer request received.');
 
@@ -48,17 +92,25 @@ class DHController {
             return;
         }
 
-        const { dataset_id, ot_object_id, viewer_erc_id } = request.body;
-        // todo pass blockchain identity
-        const requested_object = await Models.data_sellers.findOne({
+        const {
+            dataset_id, ot_object_id, viewer_erc_id,
+        } = request.body;
+
+        const allBlockchainIds = this.blockchain.getAllBlockchainIds();
+        const allMyIdentites =
+            allBlockchainIds.map(bc_id => this.profileService.getIdentity(bc_id));
+        const requested_objects = await Models.data_sellers.findAll({
             where: {
                 data_set_id: dataset_id,
                 ot_json_object_id: ot_object_id,
-                seller_erc_id: this.profileService.getIdentity(),
+                seller_erc_id: {
+                    [Models.Sequelize.Op.in]: allMyIdentites,
+                },
             },
         });
 
-        if (requested_object === null) {
+        if (!requested_objects || !Array.isArray(requested_objects)
+            || requested_objects.length === 0) {
             response.status(400);
             response.send({
                 message: 'Specified ot-object does not exist',
@@ -67,19 +119,53 @@ class DHController {
             return;
         }
 
-        const buyerProfile =
-            await this.blockchain.getProfile(Utilities.normalizeHex(viewer_erc_id)).response;
+        const promises = [];
+        for (const blockchain_id of allBlockchainIds) {
+            promises.push(this.blockchain
+                .getProfile(Utilities.normalizeHex(viewer_erc_id), blockchain_id).response
+                .then(res => ({
+                    blockchain_id,
+                    profile: res,
+                })));
+        }
+        const buyerProfiles = await Promise.all(promises);
 
-        const buyer_node_id = Utilities.denormalizeHex(buyerProfile.nodeId.substring(0, 42));
+        if (!buyerProfiles) {
+            response.status(400);
+            response.send({
+                message: `Could not find profile for buyer ${viewer_erc_id} on any blockchain`,
+                status: 'FAILED',
+            });
+        }
+        const buyerProfile = buyerProfiles.find((foundProfile) => {
+            if (!foundProfile.profile.nodeId) {
+                return false;
+            }
+            const node_id = Utilities.normalizeHex(foundProfile.profile.nodeId.substring(0, 42));
+
+            return !Utilities.isZeroHash(node_id);
+        });
+        if (!buyerProfile) {
+            response.status(400);
+            response.send({
+                message: `Could not find node id for buyer ${viewer_erc_id} on any blockchain`,
+                status: 'FAILED',
+            });
+        }
+
+        const buyer_node_id =
+            Utilities.denormalizeHex(buyerProfile.profile.nodeId.substring(0, 42));
+        const { blockchain_id } = buyerProfile;
 
         // todo pass blockchain identity
         await Models.data_trades.create({
             data_set_id: dataset_id,
+            blockchain_id,
             ot_json_object_id: ot_object_id,
             buyer_node_id,
             buyer_erc_id: Utilities.normalizeHex(viewer_erc_id),
             seller_node_id: this.config.identity,
-            seller_erc_id: this.profileService.getIdentity(),
+            seller_erc_id: this.profileService.getIdentity(blockchain_id),
             price: '0',
             status: 'COMPLETED',
         });
@@ -93,6 +179,8 @@ class DHController {
     }
 
     async getTrail(req, res) {
+        this.logger.api('POST: Trail request received.');
+
         if (req.body === undefined ||
             req.body.identifier_types === undefined ||
             req.body.identifier_values === undefined
@@ -144,7 +232,7 @@ class DHController {
             let response = this.importService.packTrailData(trail);
 
             if (reach === constants.TRAIL_REACH_PARAMETERS.extended) {
-                response = await this._extendResponse(response);
+                response = await this.trailService._extendResponse(response);
             }
 
             res.status(200);
@@ -155,43 +243,150 @@ class DHController {
         }
     }
 
-    async _extendResponse(response) {
-        const missingObjects = {};
-        for (const trailElement of response) {
-            const object = trailElement.otObject;
+    async lookupTrail(req, res) {
+        this.logger.api('POST: Trail lookup request received.');
 
-            const elementIsMissing =
-                (array, element) => !array.find(e => e.otObject['@id'] === element['@id']);
-
-            for (const relation of object.relations) {
-                if (elementIsMissing(response, relation.linkedObject)) {
-                    if (!missingObjects[relation.linkedObject['@id']]) {
-                        missingObjects[relation.linkedObject['@id']] = trailElement.datasets;
-                    } else {
-                        missingObjects[relation.linkedObject['@id']] =
-                            [...new Set(missingObjects[relation.linkedObject['@id']], trailElement.datasets)];
-                    }
-                }
-            }
+        if (req.body === undefined ||
+            req.body.identifier_types === undefined ||
+            req.body.identifier_values === undefined
+        ) {
+            const message = 'Unable to find data with given parameters! identifier_types, identifier_values, and opcode are required!';
+            this.logger.info(message);
+            res.status(400);
+            res.send({
+                message,
+            });
+            return;
         }
 
-        if (Object.keys(missingObjects).length > 0) {
-            /*
-              missingObjects: {
-                id1: [  dataset 1,  dataset 2, ... ],
-                id2: [  dataset 2,  dataset x, ... ],
-                ...
-              }
-             */
+        const { identifier_types, identifier_values, opcode } = req.body;
 
-            const missingIds = Object.keys(missingObjects);
-            const missingElements =
-                await this.graphStorage.findTrailExtension(missingIds, missingObjects);
 
-            const trailExtension = this.importService.packTrailData(missingElements);
+        try {
+            const response = await this.trailService.lookupTrail(
+                identifier_types,
+                identifier_values,
+                opcode,
+            );
 
-            return response.concat(trailExtension);
+            res.status(200);
+            res.send(response);
+        } catch (e) {
+            this.logger.error(e.message);
+            res.status(501);
+            res.send({ errorMessage: 'Internal error' });
         }
+    }
+
+    async findTrail(req, res) {
+        this.logger.api('POST: Trail find request received.');
+
+        if (req.body === undefined ||
+            req.body.unique_identifiers === undefined
+        ) {
+            const message = 'Unable to find data with given parameters! unique_identifiers is required!';
+            this.logger.info(message);
+            res.status(400);
+            res.send({
+                message,
+            });
+            return;
+        }
+
+        const {
+            unique_identifiers, included_connection_types, excluded_connection_types,
+        } = req.body;
+
+        let { depth, reach } = req.body;
+
+        depth = depth === undefined ?
+            this.graphStorage.getDatabaseInfo().max_path_length :
+            parseInt(depth, 10);
+
+        reach = reach === undefined ?
+            constants.TRAIL_REACH_PARAMETERS.narrow : reach.toLowerCase();
+
+        const inserted_object = await Models.handler_ids.create({
+            status: 'PENDING',
+        });
+
+        const commandData = {
+            handler_id: inserted_object.dataValues.handler_id,
+            unique_identifiers,
+            depth,
+            reach,
+            included_connection_types,
+            excluded_connection_types,
+        };
+
+        await this.commandExecutor.add({
+            name: 'dhFindTrailCommand',
+            delay: 0,
+            transactional: false,
+            data: commandData,
+        });
+
+        res.status(200);
+        res.send({
+            handler_id: inserted_object.dataValues.handler_id,
+        });
+    }
+
+    async findTrailResult(req, res) {
+        const handlerId = req.params.handler_id;
+        this.logger.api(`POST: Trail result request received with handler id: ${handlerId}`);
+        const handler_object = await Models.handler_ids.findOne({
+            where: {
+                handler_id: handlerId,
+            },
+        });
+
+        if (!handler_object) {
+            const message = 'Unable to find data with given parameters! handler_id is required!';
+            this.logger.info(message);
+            res.status(404);
+            res.send({
+                message,
+            });
+            return;
+        }
+
+        if (handler_object.status === 'COMPLETED') {
+            const cacheDirectory = path.join(this.config.appDataPath, 'trail_cache');
+            const filePath = path.join(cacheDirectory, handlerId);
+
+            const fileContent = fs.readFileSync(filePath, { encoding: 'utf-8' });
+            handler_object.data = JSON.parse(fileContent);
+        }
+
+        res.status(200);
+        res.send({
+            data: handler_object.data,
+            status: handler_object.status,
+        });
+    }
+
+    /**
+     * Parse network response
+     * @param response  - Network response
+     * @private
+     */
+    static _stripResponse(response) {
+        return {
+            offerId: response.offer_id,
+            blockchain_id: response.blockchain_id,
+            dataSetId: response.data_set_id,
+            dcWallet: response.dc_wallet,
+            dcNodeId: response.dcNodeId,
+            litigationPublicKey: response.litigation_public_key,
+            litigationRootHash: response.litigation_root_hash,
+            distributionPublicKey: response.distribution_public_key,
+            distributionPrivateKey: response.distribution_private_key,
+            distributionEpk: response.distribution_epk,
+            transactionHash: response.transaction_hash,
+            encColor: response.color,
+            dcIdentity: response.dcIdentity,
+        };
     }
 }
 

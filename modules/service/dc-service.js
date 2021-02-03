@@ -31,17 +31,17 @@ class DCService {
      * @param litigationIntervalInMinutes
      * @param handler_id
      * @param urgent
+     * @param blockchain_id
      * @returns {Promise<*>}
      */
     async createOffer(
         dataSetId, dataRootHash, holdingTimeInMinutes, tokenAmountPerHolder,
-        dataSizeInBytes, litigationIntervalInMinutes, handler_id, urgent,
+        dataSizeInBytes, litigationIntervalInMinutes, handler_id, urgent, blockchain_id,
     ) {
         if (!holdingTimeInMinutes) {
             holdingTimeInMinutes = this.config.dc_holding_time_in_minutes;
         }
 
-        const blockchain_id = this.blockchain.getDefaultBlockchainId();
         const { dc_price_factor } = this.blockchain.getPriceFactors(blockchain_id).response;
 
         let offerPrice = {};
@@ -64,13 +64,14 @@ class DCService {
             trac_in_eth_used_for_price_calculation: offerPrice.tracInEth,
             gas_price_used_for_price_calculation: offerPrice.gasPriceInGwei,
             price_factor_used_for_price_calculation: dc_price_factor,
+            blockchain_id,
         });
 
         if (!litigationIntervalInMinutes) {
             litigationIntervalInMinutes = new BN(this.config.dc_litigation_interval_in_minutes, 10);
         }
 
-        const hasFunds = await this.hasProfileBalanceForOffer(tokenAmountPerHolder);
+        const hasFunds = await this.hasProfileBalanceForOffer(tokenAmountPerHolder, blockchain_id);
         if (!hasFunds) {
             const message = 'Not enough tokens. To replicate data please deposit more tokens to your profile';
             this.logger.warn(message);
@@ -87,6 +88,7 @@ class DCService {
             litigationIntervalInMinutes,
             handler_id,
             urgent,
+            blockchain_id,
         };
         const commandSequence = [
             'dcOfferPrepareCommand',
@@ -143,12 +145,12 @@ class DCService {
     /**
      * Has enough balance on profile for creating an offer
      * @param tokenAmountPerHolder - Tokens per DH
+     * @param blockchain_id - Blockchain implementation to use
      * @return {Promise<*>}
      */
-    async hasProfileBalanceForOffer(tokenAmountPerHolder) {
-        // todo pass blockchain identity
-        const profile =
-            await this.blockchain.getProfile(this.profileService.getIdentity()).response;
+    async hasProfileBalanceForOffer(tokenAmountPerHolder, blockchain_id) {
+        const identity = this.profileService.getIdentity(blockchain_id);
+        const profile = await this.blockchain.getProfile(identity, blockchain_id).response;
         const profileStake = new BN(profile.stake, 10);
         const profileStakeReserved = new BN(profile.stakeReserved, 10);
 
@@ -160,7 +162,8 @@ class DCService {
             remainder = offerStake.sub(profileStake.sub(profileStakeReserved));
         }
 
-        const profileMinStake = new BN(await this.blockchain.getProfileMinimumStake().response, 10);
+        const profileMinStake =
+            new BN(await this.blockchain.getProfileMinimumStake(blockchain_id).response, 10);
         if (profileStake.sub(profileStakeReserved).sub(offerStake).lt(profileMinStake)) {
             const stakeRemainder = profileMinStake.sub(profileStake.sub(profileStakeReserved));
             if (!remainder || (remainder && remainder.lt(stakeRemainder))) {
@@ -227,11 +230,12 @@ class DCService {
      * @param wallet - DH wallet
      * @param identity - Network identity
      * @param dhIdentity - DH ERC725 identity
+     * @param async_enabled - Whether or not the DH supports asynchronous communication
      * @param response - Network response
      * @returns {Promise<void>}
      */
-    async handleReplicationRequest(offerId, wallet, identity, dhIdentity, response) {
-        this.logger.info(`Request for replication of offer external ID ${offerId} received. Sender ${identity}`);
+    async handleReplicationRequest(offerId, wallet, identity, dhIdentity, async_enabled, response) {
+        this.logger.info(`Received replication request for offer_id ${offerId} from node ${identity}.`);
 
         if (!offerId || !wallet || !dhIdentity) {
             const message = 'Asked replication without providing offer ID or wallet or identity.';
@@ -271,7 +275,25 @@ class DCService {
             return;
         }
 
-        await this._sendReplication(offer, wallet, identity, dhIdentity, response);
+        if (async_enabled) {
+            await this._sendReplicationAcknowledgement(offerId, identity, response);
+
+            await this.commandExecutor.add({
+                name: 'dcReplicationSendCommand',
+                delay: 0,
+                data: {
+                    internalOfferId: offer.id,
+                    offerId,
+                    wallet,
+                    identity,
+                    dhIdentity,
+                    response,
+                },
+                transactional: false,
+            });
+        } else {
+            await this._sendReplication(offer, wallet, identity, dhIdentity, response);
+        }
     }
 
     /**
@@ -304,10 +326,11 @@ class DCService {
      * @param wallet - DH wallet
      * @param identity - Network identity
      * @param dhIdentity - DH ERC725 identity
+     * @param async_enabled - Whether or not the DH supports asynchronous communication
      * @param response - Network response
      * @returns {Promise<void>}
      */
-    async handleReplacementRequest(offerId, wallet, identity, dhIdentity, response) {
+    async handleReplacementRequest(offerId, wallet, identity, dhIdentity, async_enabled, response) {
         this.logger.info(`Replacement request for replication of offer ${offerId} received. Sender ${identity}`);
 
         if (!offerId || !wallet) {
@@ -353,12 +376,50 @@ class DCService {
             try {
                 await this.transport.sendResponse(response, {
                     status: 'fail',
+                    message: `DH ${identity} already applied for offer, currently with status ${usedDH.status}`,
                 });
             } catch (e) {
                 this.logger.error(`Failed to send response 'fail' status. Error: ${e}.`);
             }
         }
-        await this._sendReplication(offer, wallet, identity, dhIdentity, response);
+
+
+        if (async_enabled) {
+            await this._sendReplicationAcknowledgement(offerId, identity, response);
+
+            await this.commandExecutor.add({
+                name: 'dcReplicationSendCommand',
+                delay: 0,
+                data: {
+                    internalOfferId: offer.id,
+                    wallet,
+                    identity,
+                    dhIdentity,
+                    response,
+                },
+                transactional: false,
+            });
+        } else {
+            await this._sendReplication(offer, wallet, identity, dhIdentity, response);
+        }
+    }
+
+    /**
+     * Sends a replication acknowledgment to da data holder
+     * @param offerId - OfferId
+     * @param dhNetworkIdentity - DH Network identity
+     * @param response - Network response
+     * @returns {Promise<void>}
+     */
+    async _sendReplicationAcknowledgement(offerId, dhNetworkIdentity, response) {
+        const payload = {
+            offer_id: offerId,
+            status: 'acknowledge',
+        };
+
+        // send replication acknowledgement to DH
+        await this.transport.sendResponse(response, payload);
+        this.logger.info(`Sending replication request acknowledgement for offer_id ${offerId} to node ${dhNetworkIdentity}.`);
     }
 
     /**
@@ -371,33 +432,50 @@ class DCService {
      * @returns {Promise<void>}
      */
     async _sendReplication(offer, wallet, identity, dhIdentity, response) {
-        const colorNumber = Utilities.getRandomInt(2);
+        const usedDH = await models.replicated_data.findOne({
+            where: {
+                dh_id: identity,
+                dh_wallet: wallet,
+                dh_identity: dhIdentity,
+                offer_id: offer.offer_id,
+            },
+        });
+
+        let colorNumber = Utilities.getRandomInt(2);
+        if (usedDH != null && usedDH.status === 'STARTED' && usedDH.color) {
+            colorNumber = usedDH.color;
+        }
+
         const color = this.replicationService.castNumberToColor(colorNumber);
 
         const replication = await this.replicationService.loadReplication(offer.id, color);
-        await models.replicated_data.create({
-            dh_id: identity,
-            dh_wallet: wallet.toLowerCase(),
-            dh_identity: dhIdentity.toLowerCase(),
-            offer_id: offer.offer_id,
-            litigation_private_key: replication.litigationPrivateKey,
-            litigation_public_key: replication.litigationPublicKey,
-            distribution_public_key: replication.distributionPublicKey,
-            distribution_private_key: replication.distributionPrivateKey,
-            distribution_epk_checksum: replication.distributionEpkChecksum,
-            litigation_root_hash: replication.litigationRootHash,
-            distribution_root_hash: replication.distributionRootHash,
-            distribution_epk: replication.distributionEpk,
-            status: 'STARTED',
-            color: colorNumber,
-        });
+
+        if (!usedDH) {
+            await models.replicated_data.create({
+                dh_id: identity,
+                dh_wallet: wallet.toLowerCase(),
+                dh_identity: dhIdentity.toLowerCase(),
+                offer_id: offer.offer_id,
+                litigation_private_key: replication.litigationPrivateKey,
+                litigation_public_key: replication.litigationPublicKey,
+                distribution_public_key: replication.distributionPublicKey,
+                distribution_private_key: replication.distributionPrivateKey,
+                distribution_epk_checksum: replication.distributionEpkChecksum,
+                litigation_root_hash: replication.litigationRootHash,
+                distribution_root_hash: replication.distributionRootHash,
+                distribution_epk: replication.distributionEpk,
+                status: 'STARTED',
+                color: colorNumber,
+            });
+        }
 
         const toSign = [
             Utilities.denormalizeHex(new BN(replication.distributionEpkChecksum).toString('hex')),
             Utilities.denormalizeHex(replication.distributionRootHash),
         ];
 
-        const { node_wallet, node_private_key } = this.blockchain.getWallet().response;
+        const { node_wallet, node_private_key } =
+            this.blockchain.getWallet(offer.blockchain_id).response;
 
         const distributionSignature = Encryption
             .signMessage(toSign, Utilities.normalizeHex(node_private_key));
@@ -419,7 +497,6 @@ class DCService {
             ot_objects,
         );
 
-        // todo pass blockchain identity
         const payload = {
             offer_id: offer.offer_id,
             data_set_id: offer.data_set_id,
@@ -437,12 +514,12 @@ class DCService {
             transaction_hash: offer.transaction_hash,
             distributionSignature,
             color: colorNumber,
-            dcIdentity: this.profileService.getIdentity(),
+            dcIdentity: this.profileService.getIdentity(offer.blockchain_id),
         };
 
         // send replication to DH
         await this.transport.sendResponse(response, payload);
-        this.logger.info(`Replication for offer ID ${offer.id} sent to ${identity}.`);
+        this.logger.info(`Successfully sent replication data for offer_id ${offer.offer_id} to node ${identity}.`);
     }
 
     /**

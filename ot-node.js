@@ -16,7 +16,6 @@ const BlockchainPluginService = require('./modules/Blockchain/plugin/blockchain-
 const fs = require('fs');
 const path = require('path');
 const models = require('./models');
-const Storage = require('./modules/Storage');
 const SchemaValidator = require('./modules/validator/schema-validator');
 const GS1Utilities = require('./modules/importer/gs1-utilities');
 const WOTImporter = require('./modules/importer/wot-importer');
@@ -30,7 +29,7 @@ const homedir = require('os').homedir();
 const argv = require('minimist')(process.argv.slice(2));
 const Graph = require('./modules/Graph');
 const Product = require('./modules/Product');
-
+const constants = require('./modules/constants');
 const EventEmitter = require('./modules/EventEmitter');
 const DVService = require('./modules/DVService');
 const MinerService = require('./modules/service/miner-service');
@@ -47,9 +46,11 @@ const M4ArangoMigration = require('./modules/migration/m4-arango-migration');
 const M5ArangoPasswordMigration = require('./modules/migration/m5-arango-password-migration');
 const ImportWorkerController = require('./modules/worker/import-worker-controller');
 const ImportService = require('./modules/service/import-service');
-const OtJsonUtilities = require('./modules/OtJsonUtilities');
+const OtNodeClient = require('./modules/service/ot-node-client');
 const PermissionedDataService = require('./modules/service/permissioned-data-service');
 const GasStationService = require('./modules/service/gas-station-service');
+const RestoreService = require('./scripts/restore');
+const { execSync } = require('child_process');
 
 const semver = require('semver');
 
@@ -124,6 +125,8 @@ process.on('exit', (code) => {
 
 process.on('SIGINT', () => {
     log.important('SIGINT caught. Exiting...');
+
+
     process.exit(0);
 });
 
@@ -149,19 +152,6 @@ class OTNode {
         }
 
         log.important(`Running in ${process.env.NODE_ENV} environment.`);
-
-        // sync models
-        try {
-            Storage.models = (await models.sequelize.sync()).models;
-            Storage.db = models.sequelize;
-        } catch (error) {
-            if (error.constructor.name === 'ConnectionError') {
-                console.error('Failed to open database. Did you forget to run "npm run setup"?');
-                process.abort();
-            }
-            console.error(error);
-            process.abort();
-        }
 
         await this._runNetworkIdentityMigration(config);
 
@@ -221,7 +211,7 @@ class OTNode {
             }
         }
 
-        Object.seal(config);
+        this._checkRestoreRequestStatus(config);
 
         // Checking if selected graph database exists
         try {
@@ -232,6 +222,7 @@ class OTNode {
             process.exit(1);
         }
 
+        Object.seal(config);
         // Create the container and set the injectionMode to PROXY (which is also the default).
         const container = awilix.createContainer({
             injectionMode: awilix.InjectionMode.PROXY,
@@ -279,6 +270,7 @@ class OTNode {
             importService: awilix.asClass(ImportService).singleton(),
             permissionedDataService: awilix.asClass(PermissionedDataService).singleton(),
             gasStationService: awilix.asClass(GasStationService).singleton(),
+            otNodeClient: awilix.asClass(OtNodeClient).singleton(),
         });
         const blockchain = container.resolve('blockchain');
         await blockchain.loadContracts();
@@ -315,6 +307,12 @@ class OTNode {
             log.notify('================================================================');
             log.notify('        Houston password generated and stored in file           ');
             log.notify('================================================================');
+        }
+
+        if (config.high_availability_setup) {
+            const highAvailabilityService = container.resolve('highAvailabilityService');
+
+            await highAvailabilityService.startHighAvailabilityNode();
         }
 
         // Starting the kademlia
@@ -458,6 +456,46 @@ class OTNode {
         }
     }
 
+    _checkRestoreRequestStatus(config) {
+        const restoreFile = path.join(config.appDataPath, 'restore_request_status.txt');
+
+        if (fs.existsSync(restoreFile)) {
+            log.info('Detected restore request file, checking status.');
+            const restoreStatus = fs.readFileSync(restoreFile).toString();
+
+            switch (restoreStatus) {
+            case 'COMPLETED':
+                log.info('Restore status is completed, continuing with node startup.');
+                break;
+            case 'FAILED':
+                log.warn('Restore status is failed, cancelling node startup');
+                if (fs.existsSync(path.join(config.appDataPath, 'restore_error_message.txt'))) {
+                    log.warn(`Found error during restore procedure: \n${fs.readFileSync(path
+                        .join(config.appDataPath, 'restore_error_message.txt')).toString()}`);
+                }
+                log.important('To start your node please fix the restoration error(s) or skip the restore process by deleting the restore request file.');
+                process.exit(1);
+                break;
+            case 'REQUESTED':
+            default:
+                log.info('Restore status is requested, starting restore process');
+                try {
+                    const restorer = new RestoreService(log);
+                    restorer.restore();
+                    log.info('Successfully completed node restore, restarting to read restored files.');
+                    fs.writeFileSync(restoreFile, 'COMPLETED');
+                    // Exit with unexpected code, so that the node restarts
+                    process.exit(2);
+                } catch (e) {
+                    log.error(`Failed to execute node restore. Error: ${e.toString()}`);
+                    fs.writeFileSync(path.join(config.appDataPath, 'restore_error_message.txt'), e.toString());
+                    fs.writeFileSync(restoreFile, 'FAILED');
+                    process.exit(1);
+                }
+                break;
+            }
+        }
+    }
     /**
      * Starts bootstrap node
      * @return {Promise<void>}
@@ -480,6 +518,7 @@ class OTNode {
             blockchain: awilix.asClass(Blockchain).singleton(),
             blockchainPluginService: awilix.asClass(BlockchainPluginService).singleton(),
             kademlia: awilix.asClass(Kademlia).singleton(),
+            dvService: awilix.asClass(DVService).singleton(),
             config: awilix.asValue(config),
             appState: awilix.asValue(appState),
             remoteControl: awilix.asClass(RemoteControl).singleton(),
@@ -558,5 +597,8 @@ function main() {
 }
 
 // Make sure the Sequelize meta table is migrated before running main.
+if (process.env.DB_TYPE === constants.DB_TYPE.psql && process.env.NODE_ENV !== 'development') {
+    execSync('/etc/init.d/postgresql start');
+}
 const migrationSequelizeMeta = new M2SequelizeMetaMigration({ logger: log });
 migrationSequelizeMeta.run().then(main);

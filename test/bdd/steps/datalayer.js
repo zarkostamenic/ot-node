@@ -90,26 +90,22 @@ Then(/^(DC|DH)'s (\d+) dataset hashes should match blockchain values$/, async fu
 
     for (const i in Array.from({ length: myApiImportsInfo.length })) {
         const myDataSetId = myApiImportsInfo[i].data_set_id;
-        const myFingerprint = await httpApiHelper.apiFingerprint(myNode.state.node_rpc_url, myDataSetId);
-        expect(utilities.isZeroHash(myFingerprint.root_hash), 'root hash value should not be zero hash').to.be.equal(false);
+
+        const myFingerprints = await httpApiHelper.apiFingerprint(myNode.state.node_rpc_url, myDataSetId);
+        for (const fingerprint of myFingerprints) {
+            expect(utilities.isZeroHash(fingerprint.root_hash), 'root hash value should not be zero hash').to.be.equal(false);
+        }
 
         const dataset = await httpApiHelper.apiQueryLocalImportByDataSetId(myNode.state.node_rpc_url, myDataSetId);
 
         const calculatedImportHash = ImportUtilities.calculateGraphPublicHash(dataset);
         expect(calculatedImportHash, 'Calculated hashes are different').to.be.equal(myDataSetId);
 
-        const dataCreator = {
-            identifiers: [
-                {
-                    identifierValue: ImportUtilities.getDataCreator(dataset.datasetHeader),
-                    identifierType: 'ERC725',
-                    validationSchema: '/schemas/erc725-main',
-                },
-            ],
-        };
         const myMerkle = ImportUtilities.calculateDatasetRootHash(dataset);
 
-        expect(myFingerprint.root_hash, 'Fingerprint from API endpoint and manually calculated should match').to.be.equal(myMerkle);
+        for (const fingerprint of myFingerprints) {
+            expect(fingerprint.root_hash, 'Fingerprint from API endpoint and manually calculated should match').to.be.equal(myMerkle);
+        }
     }
 });
 
@@ -167,6 +163,67 @@ Given(
         this.state.lastTrail = trail;
     },
 );
+
+
+Given(
+    /^I call traversal lookup from "(\S+)" "(\S+)" with opcode "(\S+)"/,
+    { timeout: 120000 },
+    async function (typesArrayString, valuesArrayString, opCode) {
+        expect(!!this.state.dc, 'DC node not defined. Use other step to define it.').to.be.equal(true);
+        const { dc } = this.state;
+
+        const typesArray = typesArrayString.split(',');
+        const valuesArray = valuesArrayString.split(',');
+
+        const host = dc.state.node_rpc_url;
+        const trailParams = {
+            identifier_types: typesArray,
+            identifier_values: valuesArray,
+            opcode: opCode,
+        };
+
+        const trail = await httpApiHelper.apiTrailLookup(host, trailParams);
+
+        if (this.state.lastTrailLookup) {
+            this.state.secondLastTrailLookup = this.state.lastTrailLookup;
+        }
+        this.state.lastTrailLookup = trail;
+    },
+);
+
+
+Given(
+    /^I send (extended\s|narrow\s|)traversal request with included connection types "(\S+)"( and excluded connection types "(\S+)"|) for the last trail lookup request/,
+    { timeout: 120000 },
+    async function (reach, includedConnectionTypes, excludedConnectionTypes) {
+        expect(!!this.state.dc, 'DC node not defined. Use other step to define it.').to.be.equal(true);
+        expect(!!this.state.lastTrailLookup, 'Trail lookup request not defined. Use other step to define it.').to.be.equal(true);
+        const { dc } = this.state;
+
+        const host = dc.state.node_rpc_url;
+        const trailParams = {
+            unique_identifiers: this.state.lastTrailLookup.map(x => x.unique_identifier),
+            depth: 50,
+        };
+
+        if (includedConnectionTypes) { trailParams.included_connection_types = includedConnectionTypes.split(','); }
+        if (excludedConnectionTypes) { trailParams.excluded_connection_types = excludedConnectionTypes.split(','); }
+
+        if (reach.includes(constants.TRAIL_REACH_PARAMETERS.narrow)) {
+            trailParams.reach = constants.TRAIL_REACH_PARAMETERS.narrow;
+        } else if (reach.includes(constants.TRAIL_REACH_PARAMETERS.extended)) {
+            trailParams.reach = constants.TRAIL_REACH_PARAMETERS.extended;
+        }
+
+        const trail = await httpApiHelper.apiTrailFind(host, trailParams);
+
+        if (this.state.lastTrailHandlerId) {
+            this.state.secondLastTrailHandlerId = this.state.lastTrailHandlerId;
+        }
+        this.state.lastTrailHandlerId = trail.handler_id;
+    },
+);
+
 
 Then(
     /^the custom traversal from "(\S+)" "(\S+)" with connection types "(\S+)" should contain (\d+) objects/,
@@ -298,6 +355,47 @@ Then(
     },
 );
 
+
+Then(
+    /^the last traversal lookup should contain (\d+) objects with types "(\S+)" and values "(\S+)"/,
+    async function (expectedNumberOfObjects, typesArrayString, valuesArrayString) {
+        expect(!!this.state.lastTrailLookup, 'Last traversal lookup not defined. Use other step to define it.').to.be.equal(true);
+        const { lastTrailLookup } = this.state;
+
+        const typesArray = typesArrayString.split(',');
+        const valuesArray = valuesArrayString.split(',');
+
+        const filteredTrailLookup = lastTrailLookup.filter((trailLookupElement) => {
+            for (let i = 0; i < typesArray.length; i += 1) {
+                if (!trailLookupElement.identifiers.find(x => x.identifierType === typesArray[i] && x.identifierValue === valuesArray[i])) {
+                    return false;
+                }
+            }
+            return true;
+        });
+
+        expect(filteredTrailLookup, 'should be an Array').to.be.an.instanceof(Array);
+        expect(
+            filteredTrailLookup.length,
+            `Traversal lookup should contain ${expectedNumberOfObjects} of selected objects`,
+        ).to.be.equal(expectedNumberOfObjects);
+    },
+);
+
+
+Then(
+    /^the last traversal lookup should contain (\d+) objects in total/,
+    async function (expectedNumberOfObjects) {
+        expect(!!this.state.lastTrailLookup, 'Last traversal not defined. Use other step to define it.').to.be.equal(true);
+        const { lastTrailLookup } = this.state;
+
+        expect(
+            lastTrailLookup.length,
+            `Traversal should contain ${expectedNumberOfObjects} objects`,
+        ).to.be.equal(expectedNumberOfObjects);
+    },
+);
+
 Then(
     'Corrupted node should not have last replication dataset',
     async function () {
@@ -345,7 +443,9 @@ Then(/^I calculate and validate the proof of the last traversal/, { timeout: 120
             const rootHash = merkleTree.calculateProofResult(proof, objectText, object_index);
 
             const myFingerprint = await httpApiHelper.apiFingerprint(host, dataset);
-            expect(`0x${rootHash}`).to.be.equal(myFingerprint.root_hash);
+            for (const fingerprint of myFingerprint) {
+                expect(`0x${rootHash}`).to.be.equal(fingerprint.root_hash);
+            }
         }
     }
 });

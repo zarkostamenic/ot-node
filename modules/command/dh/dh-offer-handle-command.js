@@ -1,7 +1,7 @@
 const path = require('path');
-const fs = require('fs');
+
 const Command = require('../command');
-const Models = require('../../../models/index');
+const Models = require('../../../models');
 const Utilities = require('../../Utilities');
 
 /**
@@ -15,6 +15,7 @@ class DHOfferHandleCommand extends Command {
         this.transport = ctx.transport;
         this.blockchain = ctx.blockchain;
         this.profileService = ctx.profileService;
+        this.commandExecutor = ctx.commandExecutor;
     }
 
     /**
@@ -28,26 +29,27 @@ class DHOfferHandleCommand extends Command {
             dcNodeId,
         } = command.data;
 
-        const { node_wallet, node_private_key } = this.blockchain.getWallet().response;
+        const { node_wallet } = this.blockchain.getWallet(blockchain_id).response;
 
-        this.logger.trace(`Sending replication request for offer ${offerId} to ${dcNodeId}.`);
-        // todo pass blockchain identity
+        this.logger.trace(`Sending replication request for offer ${offerId} to node ${dcNodeId}.`);
         const response = await this.transport.replicationRequest({
             offerId,
             blockchain_id,
             wallet: node_wallet,
             dhIdentity: this.profileService.getIdentity(blockchain_id),
+            async_enabled: true,
         }, dcNodeId);
 
-        if (response.status === 'fail') {
-            const bid = await Models.bids.findOne({
-                where: {
-                    offer_id: offerId,
-                },
-            });
+        const bid = await Models.bids.findOne({
+            where: {
+                offer_id: offerId,
+                blockchain_id,
+            },
+        });
 
+        if (response.status === 'fail') {
             bid.status = 'FAILED';
-            let message = `Failed to receive replication from ${dcNodeId} for offer ${offerId}.`;
+            let message = `Failed to receive replication from ${dcNodeId} for offer ${offerId} on chain ${blockchain_id}.`;
             if (response.message != null) {
                 message = `${message} Data creator reason: ${response.message}`;
             }
@@ -58,13 +60,27 @@ class DHOfferHandleCommand extends Command {
             return Command.empty();
         }
 
-        const bid = await Models.bids.findOne({
-            where: { offer_id: offerId },
-        });
         bid.status = 'SENT';
         await bid.save({ fields: ['status'] });
 
-        this.logger.notify(`Replication request for ${offerId} sent to ${dcNodeId}. Response received.`);
+        if (response.status === 'acknowledge') {
+            this.logger.notify(`Received replication request acknowledgement for offer_id ${offerId} from node ${dcNodeId}.`);
+
+            return {
+                commands: [
+                    {
+                        name: 'dhReplicationTimeoutCommand',
+                        delay: this.config.dc_choose_time,
+                        data: {
+                            offerId,
+                            dcNodeId,
+                        },
+                    },
+                ],
+            };
+        }
+
+        this.logger.notify(`Received replication data for offer_id ${offerId} from node ${dcNodeId}.`);
 
         const cacheDirectory = path.join(this.config.appDataPath, 'import_cache');
 

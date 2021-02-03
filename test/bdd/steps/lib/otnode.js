@@ -251,11 +251,13 @@ class OtNode extends EventEmitter {
             this.state.node_url = line.substr(line.search('OT Node listening at ') + 'OT Node listening at '.length, line.length - 1);
         } else if (line.match(/Import complete/gi)) {
             this.emit('import-complete');
+        } else if (line.match(/Trail complete.*/gi)) {
+            this.emit('trail-complete');
         } else if (line.match(/Public key request received/gi)) {
             this.emit('public-key-request');
         } else if (line.match(/Export complete.*/gi)) {
             this.emit('export-complete');
-        } else if (line.match(/.*\[DH] Replication finished for offer ID .+/gi)) {
+        } else if (line.match(/.*\[DH] Replication finished for offer_id .+/gi)) {
             const offerId = line.match(offerIdRegex)[0];
             assert(offerId);
             this.state.addedBids.push(offerId);
@@ -263,13 +265,13 @@ class OtNode extends EventEmitter {
         } else if (line.match(/I've been chosen for offer .+\./gi)) {
             const offerId = line.match(offerIdRegex)[0];
             this.state.takenBids.push(offerId);
-        } else if (line.match(/Replication for offer ID .+ sent to .+/gi)) {
-            const internalOfferId = line.match(uuidRegex)[0];
+        } else if (line.match(/Successfully sent replication data for offer_id .+ to node .+\./gi)) {
+            const offer_id = line.match(offerIdRegex)[0];
             const dhId = line.match(identityRegex)[0];
-            assert(internalOfferId);
+            assert(offer_id);
             assert(dhId);
-            this.state.replications.push({ internalOfferId, dhId });
-            this.emit('dh-replicated', { internalOfferId, dhId });
+            this.state.replications.push({ offer_id, dhId });
+            this.emit('dh-replicated', { offer_id, dhId });
         } else if (line.includes('Get profile by wallet ')) {
             // note that node's wallet can also be access via nodeConfiguration directly
             const wallet = line.match(walletRegex)[0];
@@ -370,15 +372,15 @@ class OtNode extends EventEmitter {
             this.emit('deposit-command-completed');
         } else if (line.match(/Replication window for .+ is closed\. Replicated to .+ peers\. Verified .+\./gi)) {
             this.emit('replication-window-closed');
-        } else if (line.match(/.*Offer with internal ID .+ for data set .+ written to blockchain. Waiting for DHs\.\.\./gi)) {
+        } else if (line.match(/.*Offer with internal ID .+ for data set .+ written to blockchain .+\. Waiting for DHs\.\.\./gi)) {
             this.emit('offer-written-blockchain');
         } else if (line.match(/Command dhPayOutCommand and ID .+ processed\./gi)) {
             this.emit('dh-pay-out-finalized');
         } else if (line.match(/Accepting offer with price: .+ TRAC\./gi)) {
             const result = line.match(walletAmountRegex);
             this.state.calculatedOfferPrice = result[result.length - 1];
-        } else if (line.match(/Payout for offer .+ successfully completed\./gi)) {
-            const offerId = line.match(/Payout for offer .+ successfully completed\./gi)[0].match(/Payout for offer (.*?) successfully completed\./)[1];
+        } else if (line.match(/Payout for offer .+ successfully completed.+\./gi)) {
+            const offerId = line.match(offerIdRegex)[0];
             this.emit(`dh-pay-out-offer-${offerId}-completed`);
         } else if (line.match(/Command dhOfferFinalizedCommand and ID .+ processed\./gi)) {
             this.emit('dh-offer-finalized');
@@ -441,6 +443,8 @@ class OtNode extends EventEmitter {
             const ot_object_id = line.match(new RegExp('ot_object (.*) received'))[1];
             const dv_identity = line.match(new RegExp('from (.*)\\. Sending purchase response\\.'))[1];
             this.emit('purchase-confirmed', { ot_object_id, dv_identity });
+        } else if (line.match(/Failed to confirm purchase request\..+/gi)) {
+            this.emit('purchase-not-confirmed');
         } else if (line.match(/Purchase .+ completed\. Data stored successfully/gi)) {
             this.emit('purchase-completed');
         } else if (line.match(/Payment has been taken for purchase .+/gi)) {

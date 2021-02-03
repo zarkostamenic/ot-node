@@ -28,7 +28,7 @@ class Blockchain {
 
         this.blockchain = [];
 
-        this.config = this.attachDefaultConfig(this.config, defaultBlockchainConfig);
+        this.config = Blockchain.attachDefaultConfig(this.config, defaultBlockchainConfig);
 
         for (let i = 0; i < this.config.implementations.length; i += 1) {
             const implementation_configuration = this.config.implementations[i];
@@ -38,7 +38,7 @@ class Blockchain {
                 this.blockchain[i] = new Ethereum(ctx, implementation_configuration);
                 break;
             default:
-                this.log.error('Unsupported blockchain', this.config.blockchain_title);
+                this.log.error('Unsupported blockchain', implementation_configuration.blockchain_title);
             }
         }
 
@@ -89,7 +89,7 @@ class Blockchain {
      * @param defaultConfig {Object} - The default blockchain configuration for current environment
      * @returns {Object} - The new blockchain configuration
      */
-    attachDefaultConfig(config, defaultConfig) {
+    static attachDefaultConfig(config, defaultConfig) {
         const result = Object.assign({}, config);
 
         if (config.implementations && defaultConfig.implementations
@@ -147,6 +147,23 @@ class Blockchain {
         }
 
         throw new Error('Cannot return implementation. No implementation is initialized.');
+    }
+
+    /**
+     * Returns the blockchain id of every blockchain implementation
+     * @param {Boolean} showUninitialized - Return implementations even if they aren't initialized
+     * @returns {String} The identifier string of the default blockchain implementation
+     */
+    getAllBlockchainIds(showUninitialized = false) {
+        const blockchainIds = [];
+        for (let i = 0; i < this.blockchain.length; i += 1) {
+            const implementation = this.blockchain[i];
+            if (implementation.initialized || showUninitialized) {
+                blockchainIds.push(implementation.getBlockchainId());
+            }
+        }
+
+        return blockchainIds;
     }
 
     /**
@@ -527,7 +544,7 @@ class Blockchain {
                 const implementation = this.blockchain[i];
 
                 blockStartConditions.push({
-                    blockchain_id: implementation.config.network_id,
+                    blockchain_id: implementation.getBlockchainId(),
                     block: { [Op.gte]: currentBlocks[i] },
                 });
             }
@@ -663,11 +680,11 @@ class Blockchain {
             ],
         });
 
-        if (lastEvent) {
-            fromBlock = lastEvent.block + 1;
-        } else {
-            const currentBlock = await implementation.getCurrentBlock();
+        const currentBlock = await implementation.getCurrentBlock();
 
+        if (lastEvent) {
+            fromBlock = Math.max(currentBlock - 2000, lastEvent.block + 1);
+        } else {
             fromBlock = Math.max(currentBlock - 100, 0);
         }
 
@@ -1215,6 +1232,40 @@ class Blockchain {
     }
 
     /**
+     * Returns wallets from blockchain implementations
+     * @param {Boolean} showUninitialized - Return all implementations, not only initialized ones
+     * @returns {Array<Object>} -
+     *      An array of objects containing the blockchain_id string and the response string
+     */
+    getAllWallets(showUninitialized = false) {
+        const wallets = [];
+        for (let i = 0; i < this.blockchain.length; i += 1) {
+            const implementation = this.blockchain[i];
+            if (implementation.initialized || showUninitialized) {
+                wallets.push({
+                    blockchain_id: implementation.getBlockchainId(),
+                    response: implementation.getWallet(),
+                });
+            }
+        }
+
+        return wallets;
+    }
+
+    /**
+     * Returns wallet public and private key from configuration
+     * @param {String} blockchain_id - Blockchain implementation to use
+     * @param {Boolean} showUninitialized - Return implementations even if they aren't initialized
+     */
+    getWallet(blockchain_id, showUninitialized = false) {
+        const implementation = this._getImplementationFromId(blockchain_id, showUninitialized);
+        return {
+            blockchain_id: implementation.getBlockchainId(),
+            response: implementation.getWallet(),
+        };
+    }
+
+    /**
      * Saves identity into file and configuration
      * @param {String} identity - The identity to save
      * @param {String} blockchain_id - Blockchain implementation to use
@@ -1239,19 +1290,6 @@ class Blockchain {
         return {
             blockchain_id: implementation.getBlockchainId(),
             response: implementation.getHubContractAddress(),
-        };
-    }
-
-    /**
-     * Returns wallet public and private key from configuration
-     * @param {String} blockchain_id - Blockchain implementation to use
-     * @param {Boolean} showUninitialized - Return implementations even if they aren't initialized
-     */
-    getWallet(blockchain_id, showUninitialized = false) {
-        const implementation = this._getImplementationFromId(blockchain_id, showUninitialized);
-        return {
-            blockchain_id: implementation.getBlockchainId(),
-            response: implementation.getWallet(),
         };
     }
 

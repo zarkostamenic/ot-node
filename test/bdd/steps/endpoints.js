@@ -78,9 +78,36 @@ Given(/^(DC|DV|DV2) waits for import to finish$/, { timeout: 1200000 }, async fu
     return promise;
 });
 
+
+Given(/^I wait for trail to finish$/, { timeout: 1200000 }, async function () {
+    expect(!!this.state.dc, 'DC node not defined. Use other step to define it.').to.be.equal(true);
+    expect(!!this.state.lastTrailHandlerId, 'Trail request not defined.').to.be.equal(true);
+    expect(this.state.nodes.length, 'No started nodes').to.be.greaterThan(0);
+    expect(this.state.bootstraps.length, 'No bootstrap nodes').to.be.greaterThan(0);
+
+    const target = this.state.dc;
+    const host = this.state.dc.state.node_rpc_url;
+
+    const promise = new Promise((acc) => {
+        target.once('trail-complete', async () => {
+            if (this.state.lastTrail) {
+                this.state.secondLastTrail = this.state.lastTrail;
+            }
+
+            const response = await httpApiHelper.apiTrailFindResult(host, this.state.lastTrailHandlerId);
+            this.state.lastTrail = response.data;
+
+            acc();
+        });
+    });
+
+
+    return promise;
+});
+
 Given(/^(DC|DH|DV|DV2) exports the last imported dataset as ([GS1\-EPCIS|GRAPH|OT\-JSON|WOT]+)$/, async function (targetNode, exportType) {
     expect(exportType, 'export type can only be GS1-EPCIS, OT-JSON, WOT, or GRAPH.').to.satisfy(val => (val === 'GS1-EPCIS' || val === 'GRAPH' || val === 'OT-JSON' || val === 'WOT'));
-    expect(targetNode, 'Node type can only be DC, DV2 or DV.').to.satisfy(val => (val === 'DC' || val === 'DV2' || val === 'DV'));
+    expect(targetNode, 'Node type can only be DC, DV2, DV, or DH.').to.satisfy(val => (val === 'DC' || val === 'DV2' || val === 'DV' || val === 'DH'));
     expect(!!this.state[targetNode.toLowerCase()], 'Target node not defined. Use other step to define it.').to.be.equal(true);
     expect(!!this.state.lastImport, 'Last import data not defined. Use other step to define it.').to.be.equal(true);
 
@@ -118,7 +145,7 @@ Then(/^the consensus check should pass for the two last imports$/, function () {
 });
 
 Given(/^(DC|DH|DV|DV2) waits for export to finish$/, { timeout: 1200000 }, async function (targetNode) {
-    expect(targetNode, 'Node type can only be DC, DV2 or DV.').to.satisfy(val => (val === 'DC' || val === 'DV2' || val === 'DV'));
+    expect(targetNode, 'Node type can only be DC, DV2, DV, or DH.').to.satisfy(val => (val === 'DC' || val === 'DV2' || val === 'DV' || val === 'DH'));
     expect(!!this.state[targetNode.toLowerCase()], 'Target node not defined. Use other step to define it.').to.be.equal(true);
     expect(this.state.nodes.length, 'No started nodes').to.be.greaterThan(0);
 
@@ -260,6 +287,20 @@ Given(/^([DV|DV2]+) publishes query consisting of path: "(\S+)", value: "(\S+)" 
     return new Promise((accept, reject) => dv.once('dv-network-query-processed', () => accept()));
 });
 
+Given(/^([DC|DH]+) removes permissioned data from the last imported dataset consisting of path: "(\S+)", value: "(\S+)"$/, { timeout: 90000 }, async function (whichNode, path, value) {
+    expect(!!this.state[whichNode.toLowerCase()], 'DC/DH node not defined. Use other step to define it.').to.be.equal(true);
+    const node = this.state[whichNode.toLowerCase()];
+
+    const jsonQuery = {
+        identifier_type: path,
+        identifier_value: value,
+        dataset_id: this.state.lastImport.data.dataset_id,
+    };
+    const response =
+        await httpApiHelper.apiRemovePermissionedData(node.state.node_rpc_url, jsonQuery);
+    expect(response.status, 'Response should have message and query_id').to.be.equal('COMPLETED');
+});
+
 Given(/^the ([DV|DV2]+) sends read and export for (last import|second last import) from DC as ([GS1\-EPCIS|GRAPH|OT\-JSON|WOT]+)$/, { timeout: 90000 }, async function (whichDV, whichImport, exportType) {
     this.logger.log(`${whichDV} sends read and export request.`);
     expect(exportType, 'exportType can only be OT-JSON, GS1-EPCIS, WOT or GRAPH.').to.satisfy(val => (val === 'GS1-EPCIS' || val === 'GRAPH' || val === 'OT-JSON' || val === 'WOT'));
@@ -287,6 +328,38 @@ Given(/^the ([DV|DV2]+) sends read and export for (last import|second last impor
     expect(Object.keys(readExportNetworkResponse), 'Response should have handler_id').to.have.members(['handler_id']);
     this.state.lastExportHandler = readExportNetworkResponse.handler_id;
     this.state.lastExportType = exportType;
+});
+
+
+Given(/^([DC|DH]+) runs local query consisting of path: "(\S+)", value: "(\S+)" and opcode: "(\S+)"$/, { timeout: 90000 }, async function (whichNode, path, value, opcode) {
+    expect(!!this.state[whichNode.toLowerCase()], 'DC/DH node not defined. Use other step to define it.').to.be.equal(true);
+    expect(opcode, 'Opcode should only be EQ or IN.').to.satisfy(val => (val === 'EQ' || val === 'IN'));
+    const dv = this.state[whichNode.toLowerCase()];
+
+    const jsonQuery = {
+        query:
+            [
+                {
+                    path,
+                    value,
+                    opcode,
+                },
+            ],
+    };
+    const queryNetworkResponse =
+        await httpApiHelper.apiQueryLocal(dv.state.node_rpc_url, jsonQuery);
+    expect(queryNetworkResponse.length, 'Response should be an array').to.be.equal(1);
+    expect(Object.keys(queryNetworkResponse[0]), 'Array element should have datasets, offers, otObject').to.have.members(['dataset_id', 'offer_id', 'otObject']);
+    // eslint-disable-next-line prefer-destructuring
+    this.state.lastLocalQueryResponse = queryNetworkResponse[0];
+});
+
+Then(/^The last local query should return otObject from the last imported dataset$/, { timeout: 90000 }, function () {
+    expect(this.state.lastLocalQueryResponse, 'Last local query not defined').to.not.be.equal(null);
+    expect(!!this.state.lastImport, 'Nothing was imported. Use other step to do it.').to.be.equal(true);
+    expect(!!this.state.lastImport.data.dataset_id, 'Last imports data set id seems not defined').to.be.equal(true);
+    expect(Object.keys(this.state.lastLocalQueryResponse), 'Array element should have datasets, otObject').to.have.members(['dataset_id', 'offer_id', 'otObject']);
+    expect(this.state.lastImport.data.dataset_id, 'otObject should be from the latest imported dataset').to.be.equal(this.state.lastLocalQueryResponse.dataset_id);
 });
 
 Given(/^the ([DV|DV2]+) purchases (last import|second last import) from the last query from (a DH|the DC|a DV)$/, function (whichDV, whichImport, fromWhom, done) {
@@ -386,7 +459,7 @@ Given(/^([DC|DH|DV]+) gets the list of available datasets for trading$/, async f
 
     const availableResponse = await httpApiHelper.apiPermissionedDataAvailable(host);
     expect(availableResponse[0], 'Should have keys called dataset, ot_objects, seller_erc_id, seller_node_id, timestamp')
-        .to.have.all.keys('dataset', 'ot_objects', 'seller_erc_id', 'seller_node_id', 'timestamp');
+        .to.have.all.keys('dataset', 'ot_objects', 'seller_identities', 'seller_node_id', 'timestamp');
 
     const { dataset, ot_objects, seller_node_id } = availableResponse[0];
     expect(this.state.lastImport.data.dataset_id).to.be.equal(dataset.id);
@@ -409,6 +482,20 @@ Given(/^([DC|DH|DV]+) gets the price for the last imported dataset$/, async func
 
     expect(response, 'Should have keys called data and status').to.have.all.keys('data', 'status');
     expect(response.status).to.be.equal('COMPLETED');
+});
+
+Given(/^([DC|DH|DV]+) unsuccessfully gets the price for the last imported dataset$/, async function (viewer) {
+    this.logger.log(`${viewer} gets the price for the last imported dataset.`);
+    expect(viewer, 'Node type can only be DC, DH, DV.').to.be.oneOf(['DC', 'DH', 'DV']);
+
+    const host = this.state[viewer.toLowerCase()].state.node_rpc_url;
+
+    const { handler_id } = await httpApiHelper.apiPermissionedDataGetPrice(host, this.state.availablePurchase);
+    await sleep.sleep(2000);
+    const response = await httpApiHelper.apiPermissionedDataGetPriceResult(host, handler_id);
+
+    expect(response, 'Should have keys called data and status').to.have.all.keys('data', 'status');
+    expect(response.status).to.be.equal('FAILED');
 });
 
 
@@ -437,6 +524,31 @@ Given(/^([DC|DH|DV]+) initiates purchase for the last imported dataset and waits
     return promise;
 });
 
+
+Then(/^([DC|DH|DV]+) unsuccessfully initiates purchase for the last imported dataset$/, async function (viewer) {
+    this.logger.log(`${viewer} initiates purchase for the last imported dataset and waits for confirmation.`);
+    expect(viewer, 'Node type can only be DC, DH, DV.').to.be.oneOf(['DC', 'DH', 'DV']);
+
+    const host = this.state[viewer.toLowerCase()].state.node_rpc_url;
+
+    const { handler_id } = await httpApiHelper.apiPermissionedDataPurchase(host, this.state.availablePurchase);
+    this.state.lastPurchaseHandler = handler_id;
+
+    this.state.lastQueryNetworkId = {};
+    this.state[viewer.toLowerCase()].state.purchasedDatasets = {};
+    this.state[viewer.toLowerCase()].state.purchasedDatasets[this.state.availablePurchase.data_set_id] = {};
+
+    const source = this.state.dc;
+
+    const promise = new Promise((acc, reject) => {
+        source.once('purchase-not-confirmed', async () => {
+            acc();
+        });
+    });
+
+    return promise;
+});
+
 Given(/^(DC|DV|DV2) waits for purchase to finish$/, { timeout: 300000 }, async function (targetNode) {
     this.logger.log(`${targetNode} waits for purchase to finish.`);
     expect(targetNode, 'Node type can only be DC, DH or DV.').to.satisfy(val => (val === 'DC' || val === 'DV2' || val === 'DV'));
@@ -453,6 +565,20 @@ Given(/^(DC|DV|DV2) waits for purchase to finish$/, { timeout: 300000 }, async f
 
 
     return promise;
+});
+
+
+Then(/^The last export doesn't have permissioned data$/, async function () {
+    expect(!!this.state.lastExport, 'Last export data not defined. Use other step to define it.').to.be.equal(true);
+    expect(this.state.lastExport.status, 'Last export should be completed.').to.be.equal('COMPLETED');
+    const { data } = this.state.lastExport;
+    const properties = (JSON.parse(data.formatted_dataset)['@graph']).map(x => x.properties);
+    for (const p of properties) {
+        if (p.permissioned_data) {
+            expect(p.permissioned_data).to.have.keys(['permissioned_data_hash']);
+            expect(p.permissioned_data).to.not.have.keys(['data']);
+        }
+    }
 });
 
 
@@ -479,7 +605,7 @@ Given(/^default initial token amount should be deposited on (\d+)[st|nd|rd|th]+ 
     expect(nodeIndex, 'Invalid index.').to.be.within(0, this.state.nodes.length);
 
     const balance = await httpApiHelper.apiBalance(this.state.nodes[nodeIndex - 1].state.node_rpc_url, false);
-    const staked = new BN(balance.profile.staked);
+    const staked = new BN(balance[0].profile.staked);
     const initialDepositAmount = new BN(this.state.nodes[nodeIndex - 1].options.nodeConfiguration.initial_deposit_amount);
 
     expect(staked.toString()).to.be.equal(initialDepositAmount.toString());

@@ -86,19 +86,19 @@ class DHDataReadRequestFreeCommand extends Command {
 
             ImportUtilities.removeGraphPermissionedData(document['@graph']);
 
-            const transactionHash = await ImportUtilities
-                .getTransactionHash(dataInfo.data_set_id, dataInfo.origin);
+            const replicationInfo = await ImportUtilities
+                .getReplicationInfo(dataInfo.data_set_id, dataInfo.origin);
 
             const replyMessage = {
                 id,
                 wallet: node_wallet,
                 nodeId: this.config.identity,
-                data_provider_wallet: dataInfo.data_provider_wallet,
+                data_provider_wallets: JSON.parse(dataInfo.data_provider_wallets),
                 agreementStatus: 'CONFIRMED',
                 document,
                 permissionedData,
                 data_set_id: importId,
-                transaction_hash: transactionHash,
+                replication_info: replicationInfo,
                 handler_id,
             };
             const dataReadResponseObject = {

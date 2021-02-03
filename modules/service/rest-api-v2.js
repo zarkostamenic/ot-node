@@ -46,8 +46,18 @@ class RestAPIServiceV2 {
             transport, emitter, blockchain, config,
         } = this.ctx;
 
+        server.get(`/api/${this.version_id}/health_check`, (req, res) => {
+            res.status(200);
+            res.send({
+            });
+        });
+
         server.get(`/api/${this.version_id}/info`, async (req, res) => {
             await this.infoController.getNodeInfo(req, res);
+        });
+
+        server.post(`/api/${this.version_id}/node_data`, async (req, res) => {
+            await this.infoController.getNodeData(req, res);
         });
 
         server.post(`/api/${this.version_id}/import`, async (req, res) => {
@@ -59,7 +69,7 @@ class RestAPIServiceV2 {
         });
 
         server.post(`/api/${this.version_id}/replicate`, async (req, res) => {
-            await this._replicateDataset(req, res);
+            await this.dcController.handleReplicateRequest(req, res);
         });
 
         server.get(`/api/${this.version_id}/replicate/result/:handler_id`, async (req, res) => {
@@ -78,6 +88,10 @@ class RestAPIServiceV2 {
             this._getStandards(req, res);
         });
 
+        server.get(`/api/${this.version_id}/blockchains`, async (req, res) => {
+            await this.infoController.getBlockchains(req, res);
+        });
+
         server.get(`/api/${this.version_id}/get_element_issuer_identity/:element_id`, async (req, res) => {
             await this._getElementIssuerIdentity(req, res);
         });
@@ -91,7 +105,19 @@ class RestAPIServiceV2 {
         });
 
         server.post(`/api/${this.version_id}/trail`, async (req, res) => {
-            await this._getTrail(req, res);
+            await this.dhController.getTrail(req, res);
+        });
+
+        server.post(`/api/${this.version_id}/trail/lookup`, async (req, res) => {
+            await this.dhController.lookupTrail(req, res);
+        });
+
+        server.post(`/api/${this.version_id}/trail/find`, async (req, res) => {
+            await this.dhController.findTrail(req, res);
+        });
+
+        server.get(`/api/${this.version_id}/trail/find/result/:handler_id`, async (req, res) => {
+            await this.dhController.findTrailResult(req, res);
         });
 
         server.post(`/api/${this.version_id}/get_merkle_proofs`, async (req, res) => {
@@ -128,6 +154,10 @@ class RestAPIServiceV2 {
 
         server.post(`/api/${this.version_id}/permissioned_data/whitelist_viewer`, async (req, res) => {
             await this.dhController.whitelistViewer(req, res);
+        });
+
+        server.post(`/api/${this.version_id}/permissioned_data/remove`, async (req, res) => {
+            await this.dcController.removePermissionedData(req, res);
         });
 
         server.post(`/api/${this.version_id}/network/read_export`, async (req, res) => {
@@ -176,6 +206,10 @@ class RestAPIServiceV2 {
             });
         }
 
+        server.post(`/api/${this.version_id}/query/local`, async (req, res, next) => {
+            await this.dcController.queryLocal(req, res);
+        });
+
         /** Network related routes */
         server.get(`/api/${this.version_id}/network/get-contact/:node_id`, async (req, res) => {
             const nodeId = req.params.node_id;
@@ -213,27 +247,6 @@ class RestAPIServiceV2 {
 
             const { type } = req.body;
             emitter.emit(type, req, res);
-        });
-
-        server.post(`/api/${this.version_id}/query/local`, (req, res, next) => {
-            this.logger.api('POST: Local query request received.');
-
-            let error = RestAPIValidator.validateBodyRequired(req.body);
-            if (error) {
-                return next(error);
-            }
-
-            const queryObject = req.body.query;
-            error = RestAPIValidator.validateSearchQuery(queryObject);
-            if (error) {
-                return next(error);
-            }
-
-            // TODO: Decrypt returned vertices
-            emitter.emit('api-query', {
-                query: queryObject,
-                response: res,
-            });
         });
 
         server.get(`/api/${this.version_id}/query/local/import/:data_set_id`, (req, res) => {
@@ -288,6 +301,7 @@ class RestAPIServiceV2 {
 
             emitter.emit('api-payout', {
                 offerId: req.query.offer_id,
+                blockchain_id: req.query.blockchain_id,
                 response: res,
             });
         });
@@ -295,8 +309,8 @@ class RestAPIServiceV2 {
         /** Get root hash for provided data query
          * @param Query params: data_set_id
          */
-        server.get(`/api/${this.version_id}/fingerprint/:dataset_id`, (req, res) => {
-            this.dvController.handleGetFingerprint(req, res);
+        server.get(`/api/${this.version_id}/fingerprint/:dataset_id`, async (req, res) => {
+            await this.dvController.handleGetFingerprint(req, res);
         });
 
         server.get(`/api/${this.version_id}/import_info`, async (req, res) => {
@@ -321,36 +335,52 @@ class RestAPIServiceV2 {
             try {
                 const humanReadable = req.query.humanReadable === 'true';
 
-                const { blockchain_id, response } = blockchain.getWallet();
-                const { node_wallet } = response;
-                const erc725Identity = blockchain.getIdentity(blockchain_id).response;
-                const blockchain_title = blockchain.getBlockchainTitle(blockchain_id).response;
+                const blockchains = this.infoController.getBlockchainInfo();
+                const promises = [];
+                for (const blockchain_info of blockchains) {
+                    const {
+                        blockchain_id, blockchain_title, node_wallet, identity,
+                    } = blockchain_info;
 
-                const walletBaseBalance =
-                    await blockchain.getWalletBaseBalance(node_wallet, blockchain_id).response;
-                const walletTokenBalance =
-                    await blockchain.getWalletTokenBalance(node_wallet, blockchain_id).response;
+                    // eslint-disable-next-line no-loop-func
+                    promises.push(new Promise(async (resolve, reject) => {
+                        try {
+                            const walletBaseBalance = await blockchain
+                                .getWalletBaseBalance(node_wallet, blockchain_id).response;
+                            const walletTokenBalance = await blockchain
+                                .getWalletTokenBalance(node_wallet, blockchain_id).response;
 
-                const profile =
-                    await blockchain.getProfile(erc725Identity, blockchain_id).response;
-                const profileMinimalStake =
-                    await blockchain.getProfileMinimumStake(blockchain_id).response;
+                            const profile =
+                                await blockchain.getProfile(identity, blockchain_id).response;
+                            const profileMinimalStake =
+                                await blockchain.getProfileMinimumStake(blockchain_id).response;
 
-                const body = {
-                    wallet: {
-                        address: node_wallet,
-                        ethBalance: humanReadable ? Blockchain.fromWei(blockchain_title, walletBaseBalance, 'ether') : walletBaseBalance,
-                        tokenBalance: humanReadable ? Blockchain.fromWei(blockchain_title, walletTokenBalance, 'ether') : walletTokenBalance,
-                    },
-                    profile: {
-                        staked: humanReadable ? Blockchain.fromWei(blockchain_title, profile.stake, 'ether') : profile.stake,
-                        reserved: humanReadable ? Blockchain.fromWei(blockchain_title, profile.stakeReserved, 'ether') : profile.stakeReserved,
-                        minimalStake: humanReadable ? Blockchain.fromWei(blockchain_title, profileMinimalStake, 'ether') : profileMinimalStake,
-                    },
-                };
+                            const body = {
+                                blockchain_id,
+                                blockchain_title,
+                                wallet: {
+                                    address: node_wallet,
+                                    ethBalance: humanReadable ? Blockchain.fromWei(blockchain_title, walletBaseBalance, 'ether') : walletBaseBalance,
+                                    tokenBalance: humanReadable ? Blockchain.fromWei(blockchain_title, walletTokenBalance, 'ether') : walletTokenBalance,
+                                },
+                                profile: {
+                                    address: identity,
+                                    staked: humanReadable ? Blockchain.fromWei(blockchain_title, profile.stake, 'ether') : profile.stake,
+                                    reserved: humanReadable ? Blockchain.fromWei(blockchain_title, profile.stakeReserved, 'ether') : profile.stakeReserved,
+                                    minimalStake: humanReadable ? Blockchain.fromWei(blockchain_title, profileMinimalStake, 'ether') : profileMinimalStake,
+                                },
+                            };
+                            resolve(body);
+                        } catch (error) {
+                            reject(error);
+                        }
+                    }));
+                }
+
+                const result = await Promise.all(promises);
 
                 res.status(200);
-                res.send(body);
+                res.send(result);
             } catch (error) {
                 this.logger.error(`Failed to get balance. ${error.message}.`);
                 res.status(503);
@@ -375,12 +405,6 @@ class RestAPIServiceV2 {
                 message,
             });
         });
-    }
-
-    async _getTrail(req, res) {
-        this.logger.api('POST: Trail request received.');
-
-        await this.dhController.getTrail(req, res);
     }
 
     async _getMerkleProofs(req, res) {
@@ -715,12 +739,6 @@ class RestAPIServiceV2 {
                 message: 'No import data provided',
             });
         }
-    }
-
-    async _replicateDataset(req, res) {
-        this.logger.api('POST: Replication of imported data request received.');
-
-        this.dcController.handleReplicateRequest(req, res);
     }
 
     /**
